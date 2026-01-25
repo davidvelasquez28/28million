@@ -170,6 +170,10 @@
       aspect-ratio: 16 / 9;
     }
 
+    .preview-image--tall {
+      aspect-ratio: 5 / 3;
+    }
+
     .controls {
       display: flex;
       flex-wrap: wrap;
@@ -320,6 +324,10 @@
         <label for="oneHourShot">1-hour time-frame screenshot</label>
         <input id="oneHourShot" type="file" accept="image/*" />
       </div>
+      <div class="stack">
+        <label for="fifteenMinuteShot">15-minute time-frame screenshot</label>
+        <input id="fifteenMinuteShot" type="file" accept="image/*" />
+      </div>
       <p class="hint">Screenshots are saved in your browser (local only).</p>
     </section>
 
@@ -416,6 +424,11 @@
           <strong>Extra notes</strong>
           <div id="exportNotes" class="export-notes">—</div>
         </div>
+
+        <div class="preview-card preview-card--full">
+          <h3>15 Minute (notes reference)</h3>
+          <img id="fifteenMinutePreview" class="preview-image preview-image--tall" alt="15-minute chart screenshot" />
+        </div>
       </div>
     </section>
   </div>
@@ -429,6 +442,7 @@
         dailyShot: document.getElementById("dailyShot"),
         fourHourShot: document.getElementById("fourHourShot"),
         oneHourShot: document.getElementById("oneHourShot"),
+        fifteenMinuteShot: document.getElementById("fifteenMinuteShot"),
         numerologyDay: document.getElementById("numerologyDay"),
         usaMonth: document.getElementById("usaMonth"),
         universalMonth: document.getElementById("universalMonth"),
@@ -441,7 +455,8 @@
         oneHourLarge: document.getElementById("oneHourPreviewLarge"),
         daily: document.getElementById("dailyPreview"),
         fourHour: document.getElementById("fourHourPreview"),
-        oneHour: document.getElementById("oneHourPreview")
+        oneHour: document.getElementById("oneHourPreview"),
+        fifteenMinute: document.getElementById("fifteenMinutePreview")
       };
 
       const exportEls = {
@@ -458,7 +473,8 @@
       const state = {
         dailyImage: "",
         fourHourImage: "",
-        oneHourImage: ""
+        oneHourImage: "",
+        fifteenMinuteImage: ""
       };
 
       function setStatus(message) {
@@ -487,6 +503,7 @@
         previews.daily.src = state.dailyImage || "";
         previews.fourHour.src = state.fourHourImage || "";
         previews.oneHour.src = state.oneHourImage || "";
+        previews.fifteenMinute.src = state.fifteenMinuteImage || "";
       }
 
       function saveEntry() {
@@ -494,6 +511,7 @@
           dailyImage: state.dailyImage,
           fourHourImage: state.fourHourImage,
           oneHourImage: state.oneHourImage,
+          fifteenMinuteImage: state.fifteenMinuteImage,
           numerologyDay: fields.numerologyDay.value.trim(),
           usaMonth: fields.usaMonth.value.trim(),
           universalMonth: fields.universalMonth.value.trim(),
@@ -513,6 +531,7 @@
           state.dailyImage = payload.dailyImage || "";
           state.fourHourImage = payload.fourHourImage || "";
           state.oneHourImage = payload.oneHourImage || "";
+          state.fifteenMinuteImage = payload.fifteenMinuteImage || "";
           fields.numerologyDay.value = payload.numerologyDay || "";
           fields.usaMonth.value = payload.usaMonth || "";
           fields.universalMonth.value = payload.universalMonth || "";
@@ -533,6 +552,7 @@
         fields.dailyShot.value = "";
         fields.fourHourShot.value = "";
         fields.oneHourShot.value = "";
+        fields.fifteenMinuteShot.value = "";
         localStorage.removeItem(STORAGE_KEY);
         updateExportArea();
         setStatus("Entry cleared.");
@@ -559,6 +579,7 @@
       fields.dailyShot.addEventListener("change", () => handleFile(fields.dailyShot, "dailyImage"));
       fields.fourHourShot.addEventListener("change", () => handleFile(fields.fourHourShot, "fourHourImage"));
       fields.oneHourShot.addEventListener("change", () => handleFile(fields.oneHourShot, "oneHourImage"));
+      fields.fifteenMinuteShot.addEventListener("change", () => handleFile(fields.fifteenMinuteShot, "fifteenMinuteImage"));
 
       document.getElementById("saveEntry").addEventListener("click", () => {
         saveEntry();
