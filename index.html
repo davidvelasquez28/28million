@@ -146,6 +146,10 @@
       gap: 8px;
     }
 
+    .preview-card--full {
+      grid-column: 1 / -1;
+    }
+
     .preview-card h3 {
       font-size: 0.85rem;
       text-transform: uppercase;
@@ -160,6 +164,10 @@
       background: #0f172a;
       aspect-ratio: 4 / 3;
       object-fit: cover;
+    }
+
+    .preview-image--wide {
+      aspect-ratio: 16 / 9;
     }
 
     .controls {
@@ -330,6 +338,21 @@
       </div>
 
       <div class="preview">
+        <div class="preview-card preview-card--full">
+          <h3>Daily (full width)</h3>
+          <img id="dailyPreviewLarge" class="preview-image preview-image--wide" alt="Daily chart screenshot" />
+        </div>
+        <div class="preview-card preview-card--full">
+          <h3>4 Hour (full width)</h3>
+          <img id="fourHourPreviewLarge" class="preview-image preview-image--wide" alt="4-hour chart screenshot" />
+        </div>
+        <div class="preview-card preview-card--full">
+          <h3>1 Hour (full width)</h3>
+          <img id="oneHourPreviewLarge" class="preview-image preview-image--wide" alt="1-hour chart screenshot" />
+        </div>
+      </div>
+
+      <div class="preview">
         <div class="preview-card">
           <h3>Daily</h3>
           <img id="dailyPreview" class="preview-image" alt="Daily chart screenshot" />
@@ -382,6 +405,9 @@
       };
 
       const previews = {
+        dailyLarge: document.getElementById("dailyPreviewLarge"),
+        fourHourLarge: document.getElementById("fourHourPreviewLarge"),
+        oneHourLarge: document.getElementById("oneHourPreviewLarge"),
         daily: document.getElementById("dailyPreview"),
         fourHour: document.getElementById("fourHourPreview"),
         oneHour: document.getElementById("oneHourPreview")
@@ -424,6 +450,9 @@
         exportEls.usaMonth.textContent = fields.usaMonth.value.trim() || "—";
         exportEls.universalMonth.textContent = fields.universalMonth.value.trim() || "—";
         exportEls.notes.textContent = fields.extraNotes.value.trim() || "—";
+        previews.dailyLarge.src = state.dailyImage || "";
+        previews.fourHourLarge.src = state.fourHourImage || "";
+        previews.oneHourLarge.src = state.oneHourImage || "";
         previews.daily.src = state.dailyImage || "";
         previews.fourHour.src = state.fourHourImage || "";
         previews.oneHour.src = state.oneHourImage || "";
