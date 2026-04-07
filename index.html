@@ -576,6 +576,11 @@
         <div class="stat-value" id="need-earn">$0.00</div>
         <div class="stat-sub">to cover all expenses</div>
       </div>
+      <div class="stat">
+        <div class="stat-label">Per Day Needed</div>
+        <div class="stat-value" id="per-day">$0.00</div>
+        <div class="stat-sub" id="per-day-sub">days remaining in month</div>
+      </div>
     </div>
   </div>
 
@@ -754,6 +759,20 @@ function calcTotals() {
   const needEl = document.getElementById('need-earn');
   needEl.textContent = fmt$(needEarn);
   needEl.className = 'stat-value ' + (needEarn > 0 ? 'negative' : 'positive');
+
+  // per-day calculation: remaining owed / days left in month (including today)
+  const now = new Date();
+  const isCurrentMonth = (now.getMonth() === month && now.getFullYear() === year);
+  const daysLeft = isCurrentMonth
+    ? new Date(year, month + 1, 0).getDate() - now.getDate() + 1
+    : new Date(year, month + 1, 0).getDate(); // future month = full month
+  const stillNeeded = Math.max(total - have, 0);
+  const perDay = daysLeft > 0 ? stillNeeded / daysLeft : 0;
+  const perDayEl = document.getElementById('per-day');
+  const perDaySubEl = document.getElementById('per-day-sub');
+  perDayEl.textContent = fmt$(perDay);
+  perDayEl.className = 'stat-value ' + (perDay > 0 ? 'warn' : 'positive');
+  perDaySubEl.textContent = daysLeft + ' day' + (daysLeft === 1 ? '' : 's') + ' left in ' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][month];
 }
 
 // ── RENDER ────────────────────────────────────────────────────────
