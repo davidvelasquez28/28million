@@ -733,18 +733,12 @@ function calcTotals() {
     total += parseFloat(b.amount) || 0;
   });
 
-  // weekly budgets: sum caps for weeks in this month
+  // weekly budgets: sum actual spent across all weeks in this month
   state.weekly.forEach(w => {
     const weeks = generateWeeks(w.startFriday, month, year);
     weeks.forEach(wk => {
-      const start = parseDate(wk.startStr);
-      const end   = parseDate(wk.endStr);
-      // include if overlaps the month
-      const monthStart = new Date(year, month, 1);
-      const monthEndD  = new Date(year, month+1, 0);
-      if (start <= monthEndD && end >= monthStart) {
-        total += parseFloat(w.weeklyBudget) || 0;
-      }
+      const cap = parseFloat(w.weeklyBudget) || 0;
+      total += cap;
     });
   });
 
@@ -802,11 +796,14 @@ function render() {
     html = '<div class="empty-state" id="empty-state">no bills added yet — hit + add bill to get started</div>';
   }
 
+  const seenWeeklyIds = new Set();
   rows.forEach(row => {
     if (row.type === 'standard') {
       html += renderStandardBill(row.data, today);
     } else {
-      html += renderWeeklyRow(row.data, row.wk, today, row.weekIdx);
+      const isFirst = !seenWeeklyIds.has(row.data.id);
+      seenWeeklyIds.add(row.data.id);
+      html += renderWeeklyRow(row.data, row.wk, today, isFirst);
     }
   });
 
@@ -853,7 +850,7 @@ function renderStandardBill(b, today) {
   </div>`;
 }
 
-function renderWeeklyRow(w, wk, today, weekIdx) {
+function renderWeeklyRow(w, wk, today, isFirst) {
   const start = parseDate(wk.startStr);
   const end   = parseDate(wk.endStr);
   const isPast = end < today;
@@ -895,7 +892,7 @@ function renderWeeklyRow(w, wk, today, weekIdx) {
       </div>
       <div class="bill-actions">
         <button class="bill-btn" onclick="toggleLogForm('${w.id}','${wk.startStr}')">+ log</button>
-        ${weekIdx === 0 ? `<button class="bill-btn danger" onclick="deleteWeekly('${w.id}')">remove</button>` : ''}
+        ${isFirst ? `<button class="bill-btn danger" onclick="deleteWeekly('${w.id}')">remove</button>` : ''}
       </div>
     </div>
     <div class="week-bar-wrap">
@@ -983,7 +980,7 @@ document.getElementById('add-bill-btn').addEventListener('click', () => {
   setType('standard');
 });
 
-document.getElementById('modal-cancel').addEventListener('click', closeModal);
+document.getElementById('modal-cancel').onclick = closeModal;
 document.getElementById('modal-overlay').addEventListener('click', e => {
   if (e.target === document.getElementById('modal-overlay')) closeModal();
 });
@@ -997,7 +994,7 @@ function closeModal() {
   });
 }
 
-document.getElementById('modal-save').addEventListener('click', () => {
+document.getElementById('modal-save').onclick = () => {
   if (currentType === 'standard') {
     const name = document.getElementById('f-name').value.trim();
     const amount = parseFloat(document.getElementById('f-amount').value);
@@ -1014,7 +1011,7 @@ document.getElementById('modal-save').addEventListener('click', () => {
   saveState();
   closeModal();
   render();
-});
+};
 
 // ── MONTH NAV ─────────────────────────────────────────────────────
 document.getElementById('prev-month').addEventListener('click', () => {
