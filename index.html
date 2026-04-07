@@ -1,612 +1,1043 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Minimal Trading Journal</title>
-  <style>
-    :root {
-      color-scheme: dark;
-      font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Budget</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,700;1,300&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+  :root {
+    --bg: #0e0e10;
+    --surface: #17171a;
+    --surface2: #1f1f24;
+    --border: #2e2e36;
+    --accent: #d4f264;
+    --accent2: #6af2b0;
+    --text: #e8e8ec;
+    --muted: #6b6b7a;
+    --red: #ff5c5c;
+    --warn: #f2c76a;
+  }
 
-    body {
-      background: #0b1120;
-      color: #e2e8f0;
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      padding: 32px 16px;
-    }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+  }
 
-    .app {
-      width: 100%;
-      max-width: 980px;
-      background: #0f172a;
-      border-radius: 20px;
-      padding: 28px;
-      box-shadow: 0 20px 50px rgba(15, 23, 42, 0.65);
-      border: 1px solid rgba(148, 163, 184, 0.2);
-      display: flex;
-      flex-direction: column;
-      gap: 24px;
-    }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(212,242,100,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(212,242,100,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
 
-    header {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      border-bottom: 1px solid rgba(148, 163, 184, 0.2);
-      padding-bottom: 16px;
-    }
+  .topbar {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 18px 28px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+  }
+  .topbar h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 700;
+    font-size: 1.5rem;
+    color: var(--accent);
+    letter-spacing: -0.5px;
+    white-space: nowrap;
+  }
+  .topbar-sub {
+    font-size: 0.68rem;
+    color: var(--muted);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-right: auto;
+  }
+  .month-ctrl { display: flex; align-items: center; gap: 8px; }
+  .month-ctrl button {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    padding: 7px 11px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .month-ctrl button:hover { color: var(--accent); border-color: var(--accent); }
+  .month-label {
+    font-size: 0.75rem;
+    color: var(--text);
+    letter-spacing: 0.08em;
+    min-width: 110px;
+    text-align: center;
+  }
 
-    .title {
-      font-size: 1.4rem;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-    }
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 40px 28px 100px;
+  }
 
-    .subtitle {
-      font-size: 0.9rem;
-      color: #94a3b8;
-    }
+  /* ── SECTION HEADER ── */
+  .section { margin-bottom: 44px; }
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+  .section-num {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-weight: 300;
+    font-size: 1.1rem;
+    color: var(--accent2);
+  }
+  .section-head h2 {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-weight: 300;
+    font-size: 1.5rem;
+    color: var(--text);
+  }
+  .section-head .rule {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+  .head-action {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 6px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .head-action:hover { color: var(--accent); border-color: var(--accent); }
 
-    .grid {
-      display: grid;
-      gap: 20px;
-    }
+  /* ── STAT CARDS ── */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+  }
+  .stat {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 22px 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 130px;
+    animation: fadeUp 0.3s ease both;
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .stat-label {
+    font-size: 0.62rem;
+    color: var(--muted);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+  .stat-value {
+    font-family: 'Fraunces', serif;
+    font-size: 2.4rem;
+    font-weight: 300;
+    color: var(--text);
+    line-height: 1;
+    letter-spacing: -1px;
+    margin-top: 10px;
+  }
+  .stat-value.positive { color: var(--accent2); }
+  .stat-value.negative { color: var(--red); }
+  .stat-value.warn { color: var(--warn); }
+  .stat.highlight {
+    border-color: rgba(212,242,100,0.3);
+    background: linear-gradient(135deg, var(--surface) 0%, #1a1e15 100%);
+  }
+  .stat.highlight .stat-label { color: var(--accent); }
 
-    @media (min-width: 760px) {
-      .grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-    }
+  /* editable "have" input */
+  .stat-input-wrap { margin-top: 10px; }
+  .stat-input {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Fraunces', serif;
+    font-size: 2.4rem;
+    font-weight: 300;
+    letter-spacing: -1px;
+    width: 100%;
+    outline: none;
+    line-height: 1;
+    transition: border-color 0.15s;
+  }
+  .stat-input:focus { border-color: var(--accent); }
+  .stat-sub {
+    font-size: 0.62rem;
+    color: var(--muted);
+    margin-top: 6px;
+  }
 
-    .card {
-      background: #111b34;
-      border-radius: 16px;
-      padding: 18px;
-      border: 1px solid rgba(71, 85, 105, 0.5);
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
+  /* ── BILLS LIST ── */
+  .bills-list { display: flex; flex-direction: column; gap: 8px; }
 
-    .card h2 {
-      font-size: 0.95rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: #94a3b8;
-    }
+  .bill-row {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+    display: grid;
+    grid-template-columns: 28px 1fr auto auto;
+    align-items: center;
+    gap: 14px;
+    transition: background 0.15s, opacity 0.2s;
+    animation: fadeUp 0.25s ease both;
+  }
+  .bill-row.paid {
+    opacity: 0.45;
+  }
+  .bill-row.overdue { border-color: rgba(255,92,92,0.35); }
+  .bill-row.due-soon { border-color: rgba(242,199,106,0.35); }
 
-    label {
-      font-size: 0.85rem;
-      color: #cbd5f5;
-    }
+  /* checkbox */
+  .bill-check {
+    width: 20px; height: 20px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: transparent;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .bill-check:hover { border-color: var(--accent2); }
+  .bill-check.checked {
+    background: var(--accent2);
+    border-color: var(--accent2);
+  }
+  .bill-check.checked::after {
+    content: '✓';
+    color: #0e0e10;
+    font-size: 0.7rem;
+    font-weight: 700;
+  }
 
-    input[type="file"],
-    input[type="text"],
-    textarea {
-      width: 100%;
-      border-radius: 12px;
-      border: 1px solid rgba(51, 65, 85, 0.8);
-      background: #0b1227;
-      color: #e2e8f0;
-      padding: 10px 12px;
-      font-size: 0.9rem;
-      font-family: inherit;
-    }
+  .bill-info { min-width: 0; }
+  .bill-name {
+    font-size: 0.85rem;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .bill-row.paid .bill-name { text-decoration: line-through; color: var(--muted); }
+  .bill-meta {
+    font-size: 0.62rem;
+    color: var(--muted);
+    margin-top: 3px;
+    letter-spacing: 0.06em;
+  }
+  .bill-meta .tag-overdue { color: var(--red); }
+  .bill-meta .tag-soon { color: var(--warn); }
+  .bill-meta .tag-paid { color: var(--accent2); }
 
-    input[type="file"] {
-      padding: 8px;
-    }
+  .bill-amount {
+    font-family: 'Fraunces', serif;
+    font-size: 1.2rem;
+    font-weight: 300;
+    color: var(--text);
+    text-align: right;
+    white-space: nowrap;
+  }
+  .bill-row.paid .bill-amount { text-decoration: line-through; color: var(--muted); }
 
-    textarea {
-      min-height: 120px;
-      resize: vertical;
-      line-height: 1.4;
-    }
+  .bill-actions { display: flex; gap: 6px; }
+  .bill-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.06em;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .bill-btn:hover { color: var(--accent); border-color: var(--accent); }
+  .bill-btn.danger:hover { color: var(--red); border-color: var(--red); }
 
-    .stack {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
+  /* ── WEEKLY BUDGET ROW ── */
+  .week-row {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 18px;
+    animation: fadeUp 0.25s ease both;
+  }
+  .week-row.week-over { border-color: rgba(255,92,92,0.35); }
+  .week-row.week-past { opacity: 0.5; }
 
-    .hint {
-      font-size: 0.8rem;
-      color: #94a3b8;
-      line-height: 1.4;
-    }
+  .week-header {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    gap: 14px;
+  }
+  .week-name { font-size: 0.85rem; color: var(--text); }
+  .week-range { font-size: 0.62rem; color: var(--muted); letter-spacing: 0.06em; }
+  .week-totals { text-align: right; }
+  .week-spent {
+    font-family: 'Fraunces', serif;
+    font-size: 1.1rem;
+    font-weight: 300;
+    color: var(--text);
+    white-space: nowrap;
+  }
+  .week-remaining {
+    font-size: 0.62rem;
+    margin-top: 2px;
+    white-space: nowrap;
+  }
+  .week-remaining.ok { color: var(--accent2); }
+  .week-remaining.warn { color: var(--warn); }
+  .week-remaining.over { color: var(--red); }
 
-    .preview {
-      display: grid;
-      gap: 12px;
-    }
+  .week-bar-wrap {
+    height: 3px;
+    background: var(--surface2);
+    border-radius: 2px;
+    margin-top: 10px;
+    overflow: hidden;
+  }
+  .week-bar {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.3s ease;
+    background: var(--accent2);
+  }
+  .week-bar.warn { background: var(--warn); }
+  .week-bar.over { background: var(--red); width: 100% !important; }
 
-    @media (min-width: 760px) {
-      .preview {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-      }
-    }
+  .week-logs {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .week-log-entry {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.68rem;
+    color: var(--muted);
+    padding: 4px 0;
+    border-top: 1px solid var(--border);
+  }
+  .week-log-entry .log-del {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 0.65rem;
+    padding: 0 4px;
+    transition: color 0.15s;
+  }
+  .week-log-entry .log-del:hover { color: var(--red); }
 
-    .preview-card {
-      background: #0b1227;
-      border-radius: 14px;
-      border: 1px solid rgba(51, 65, 85, 0.7);
-      padding: 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
+  .week-footer {
+    margin-top: 10px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .week-log-input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    padding: 6px 10px;
+    border-radius: 5px;
+    outline: none;
+    width: 110px;
+    transition: border-color 0.15s;
+  }
+  .week-log-input::placeholder { color: var(--muted); }
+  .week-log-input:focus { border-color: var(--accent); }
+  .week-log-label {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    padding: 6px 10px;
+    border-radius: 5px;
+    outline: none;
+    flex: 1;
+    transition: border-color 0.15s;
+  }
+  .week-log-label::placeholder { color: var(--muted); }
+  .week-log-label:focus { border-color: var(--accent); }
 
-    .preview-card--full {
-      grid-column: 1 / -1;
-    }
+  /* ── ADD BILL MODAL ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(14,14,16,0.85);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px 28px 24px;
+    width: 100%;
+    max-width: 440px;
+    animation: fadeUp 0.2s ease both;
+  }
+  .modal h3 {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-weight: 300;
+    font-size: 1.3rem;
+    color: var(--text);
+    margin-bottom: 20px;
+  }
+  .form-group { margin-bottom: 14px; }
+  .form-group label {
+    display: block;
+    font-size: 0.6rem;
+    color: var(--muted);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .form-group input, .form-group select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    padding: 9px 12px;
+    border-radius: 6px;
+    outline: none;
+    transition: border-color 0.15s;
+    color-scheme: dark;
+  }
+  .form-group input:focus, .form-group select:focus { border-color: var(--accent); }
+  .form-group select option { background: var(--surface2); }
 
-    .preview-card h3 {
-      font-size: 0.85rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: #cbd5f5;
-    }
+  .type-toggle {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 18px;
+  }
+  .type-btn {
+    flex: 1;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+    padding: 9px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-transform: uppercase;
+  }
+  .type-btn.active { color: var(--accent); border-color: var(--accent); background: rgba(212,242,100,0.06); }
 
-    .preview-image {
-      width: 100%;
-      border-radius: 10px;
-      border: 1px solid rgba(51, 65, 85, 0.6);
-      background: #0f172a;
-      aspect-ratio: 4 / 3;
-      object-fit: cover;
-    }
+  .form-fields-standard, .form-fields-weekly { display: none; }
+  .form-fields-standard.active, .form-fields-weekly.active { display: block; }
 
-    .preview-image--wide {
-      aspect-ratio: 16 / 9;
-    }
+  .modal-actions { display: flex; gap: 8px; margin-top: 20px; }
+  .btn-primary {
+    flex: 1;
+    background: var(--accent);
+    border: none;
+    color: #0e0e10;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .btn-primary:hover { opacity: 0.85; }
+  .btn-cancel {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 10px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-cancel:hover { color: var(--text); border-color: var(--muted); }
 
-    .preview-image--tall {
-      aspect-ratio: 5 / 3;
-    }
+  .empty-state {
+    text-align: center;
+    padding: 40px;
+    color: var(--muted);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    border: 1px dashed var(--border);
+    border-radius: 10px;
+  }
 
-    .controls {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .button-row {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    button {
-      border: none;
-      border-radius: 999px;
-      padding: 10px 18px;
-      font-size: 0.9rem;
-      font-weight: 600;
-      background: linear-gradient(135deg, #6366f1, #7c3aed);
-      color: white;
-      cursor: pointer;
-      transition: transform 0.1s ease, box-shadow 0.1s ease;
-      box-shadow: 0 10px 20px rgba(79, 70, 229, 0.4);
-    }
-
-    button.secondary {
-      background: #0b1227;
-      border: 1px solid rgba(100, 116, 139, 0.7);
-      color: #e2e8f0;
-      box-shadow: none;
-    }
-
-    button:active {
-      transform: translateY(1px);
-    }
-
-    .export-area {
-      display: none;
-    }
-
-    .export-area.active {
-      display: block;
-    }
-
-    .export-page {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    .export-page + .export-page {
-      margin-top: 20px;
-    }
-
-    .export-header {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      margin-bottom: 16px;
-    }
-
-    .export-metadata {
-      display: grid;
-      gap: 12px;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      margin-top: 8px;
-    }
-
-    .export-notes {
-      white-space: pre-wrap;
-      line-height: 1.5;
-      background: #0b1227;
-      border-radius: 14px;
-      border: 1px solid rgba(51, 65, 85, 0.7);
-      padding: 12px;
-      color: #e2e8f0;
-    }
-
-    @media print {
-      body {
-        background: white;
-        color: #0f172a;
-        padding: 0;
-      }
-
-      .app {
-        box-shadow: none;
-        border: none;
-      }
-
-      .no-print {
-        display: none !important;
-      }
-
-      .export-area {
-        display: block !important;
-      }
-
-      .export-page {
-        break-after: page;
-      }
-
-      .export-page:last-of-type {
-        break-after: auto;
-      }
-
-      .export-page--full .preview-card {
-        padding: 8px;
-      }
-
-      .export-page--full .preview-image--wide {
-        max-height: 22vh;
-        object-fit: contain;
-      }
-
-      .export-area,
-      .export-area * {
-        color: #0f172a !important;
-        background: transparent !important;
-      }
-
-      .export-notes {
-        border: 1px solid #cbd5f5 !important;
-      }
-    }
-  </style>
+  /* log spend inline form toggle */
+  .log-form-wrap { display: none; }
+  .log-form-wrap.open { display: flex; }
+</style>
 </head>
 <body>
-  <div class="app">
-    <header>
-      <div class="title">Trading Journal</div>
-      <div class="subtitle">Save screenshots + numerology notes and export to PDF.</div>
-    </header>
 
-    <section class="card no-print">
-      <h2>Time-frame screenshots</h2>
-      <div class="stack">
-        <label for="dailyShot">Daily time-frame screenshot</label>
-        <input id="dailyShot" type="file" accept="image/*" />
-      </div>
-      <div class="stack">
-        <label for="fourHourShot">4-hour time-frame screenshot</label>
-        <input id="fourHourShot" type="file" accept="image/*" />
-      </div>
-      <div class="stack">
-        <label for="oneHourShot">1-hour time-frame screenshot</label>
-        <input id="oneHourShot" type="file" accept="image/*" />
-      </div>
-      <div class="stack">
-        <label for="fifteenMinuteShot">15-minute time-frame screenshot</label>
-        <input id="fifteenMinuteShot" type="file" accept="image/*" />
-      </div>
-      <p class="hint">Screenshots are saved in your browser (local only).</p>
-    </section>
+<div class="topbar">
+  <h1>Budget</h1>
+  <span class="topbar-sub">monthly overview</span>
+  <div class="month-ctrl">
+    <button id="prev-month">← prev</button>
+    <span class="month-label" id="month-label"></span>
+    <button id="next-month">next →</button>
+  </div>
+</div>
 
-    <section class="grid no-print">
-      <div class="card">
-        <h2>Numerology day</h2>
-        <label for="numerologyDay">What day is it numerologically?</label>
-        <input id="numerologyDay" type="text" placeholder="Example: 7 Day" />
-      </div>
-      <div class="card">
-        <h2>Monthly numerology</h2>
-        <label for="usaMonth">USA personal month</label>
-        <input id="usaMonth" type="text" placeholder="Example: 5" />
-        <label for="universalMonth">Universal month</label>
-        <input id="universalMonth" type="text" placeholder="Example: 2" />
-      </div>
-    </section>
+<div class="container">
 
-    <section class="card no-print">
-      <h2>Extra notes</h2>
-      <label for="extraNotes">Anything else you want to remember</label>
-      <textarea id="extraNotes" placeholder="Write observations, biases, or context..."></textarea>
-    </section>
-
-    <section class="card no-print">
-      <h2>Actions</h2>
-      <div class="controls">
-        <div class="button-row">
-          <button id="saveEntry" type="button">Save entry</button>
-          <button id="clearEntry" class="secondary" type="button">Clear entry</button>
+  <!-- ── SECTION 1: OVERVIEW ── -->
+  <div class="section">
+    <div class="section-head">
+      <span class="section-num">01</span>
+      <h2>Overview</h2>
+      <div class="rule"></div>
+    </div>
+    <div class="stat-grid">
+      <div class="stat highlight">
+        <div class="stat-label">Money I Have</div>
+        <div class="stat-input-wrap">
+          <input class="stat-input" id="money-have" type="number" placeholder="0.00" step="0.01" min="0">
         </div>
-        <div class="button-row">
-          <button id="exportPdf" type="button">Export to PDF</button>
-        </div>
+        <div class="stat-sub">tap to edit</div>
       </div>
-      <p class="hint" id="statusMessage">Saved locally · Export creates a printable view.</p>
-    </section>
-
-    <section class="card export-area" id="exportArea" aria-live="polite">
-      <div class="export-header">
-        <div class="title">Trading Journal Export</div>
-        <div class="subtitle" id="exportTimestamp">Generated on —</div>
+      <div class="stat">
+        <div class="stat-label">Total Owed</div>
+        <div class="stat-value" id="total-owed">$0.00</div>
+        <div class="stat-sub">all bills this month</div>
       </div>
-
-      <div class="export-page export-page--full">
-        <div class="preview">
-          <div class="preview-card preview-card--full">
-            <h3>Daily (full width)</h3>
-            <img id="dailyPreviewLarge" class="preview-image preview-image--wide" alt="Daily chart screenshot" />
-          </div>
-          <div class="preview-card preview-card--full">
-            <h3>4 Hour (full width)</h3>
-            <img id="fourHourPreviewLarge" class="preview-image preview-image--wide" alt="4-hour chart screenshot" />
-          </div>
-          <div class="preview-card preview-card--full">
-            <h3>1 Hour (full width)</h3>
-            <img id="oneHourPreviewLarge" class="preview-image preview-image--wide" alt="1-hour chart screenshot" />
-          </div>
-        </div>
+      <div class="stat">
+        <div class="stat-label">After Bills</div>
+        <div class="stat-value" id="after-bills">$0.00</div>
+        <div class="stat-sub">remaining balance</div>
       </div>
-
-      <div class="export-page export-page--details">
-        <div class="preview">
-          <div class="preview-card">
-            <h3>Daily</h3>
-            <img id="dailyPreview" class="preview-image" alt="Daily chart screenshot" />
-          </div>
-          <div class="preview-card">
-            <h3>4 Hour</h3>
-            <img id="fourHourPreview" class="preview-image" alt="4-hour chart screenshot" />
-          </div>
-          <div class="preview-card">
-            <h3>1 Hour</h3>
-            <img id="oneHourPreview" class="preview-image" alt="1-hour chart screenshot" />
-          </div>
-        </div>
-
-        <div class="export-metadata">
-          <div>
-            <strong>Numerology day</strong>
-            <div id="exportNumerology">—</div>
-          </div>
-          <div>
-            <strong>USA personal month</strong>
-            <div id="exportUsaMonth">—</div>
-          </div>
-          <div>
-            <strong>Universal month</strong>
-            <div id="exportUniversalMonth">—</div>
-          </div>
-        </div>
-
-        <div>
-          <strong>Extra notes</strong>
-          <div id="exportNotes" class="export-notes">—</div>
-        </div>
-
-        <div class="preview-card preview-card--full">
-          <h3>15 Minute (notes reference)</h3>
-          <img id="fifteenMinutePreview" class="preview-image preview-image--tall" alt="15-minute chart screenshot" />
-        </div>
+      <div class="stat">
+        <div class="stat-label">Need to Earn</div>
+        <div class="stat-value" id="need-earn">$0.00</div>
+        <div class="stat-sub">to cover all expenses</div>
       </div>
-    </section>
+    </div>
   </div>
 
-  <script>
-    (function () {
-      const STORAGE_KEY = "tradingJournalEntry";
-      const MAX_IMAGE_MB = 4;
+  <!-- ── SECTION 2: BILLS ── -->
+  <div class="section">
+    <div class="section-head">
+      <span class="section-num">02</span>
+      <h2>Bills & Expenses</h2>
+      <div class="rule"></div>
+      <button class="head-action" id="add-bill-btn">+ add bill</button>
+    </div>
+    <div class="bills-list" id="bills-list">
+      <div class="empty-state" id="empty-state">no bills added yet — hit + add bill to get started</div>
+    </div>
+  </div>
 
-      const fields = {
-        dailyShot: document.getElementById("dailyShot"),
-        fourHourShot: document.getElementById("fourHourShot"),
-        oneHourShot: document.getElementById("oneHourShot"),
-        fifteenMinuteShot: document.getElementById("fifteenMinuteShot"),
-        numerologyDay: document.getElementById("numerologyDay"),
-        usaMonth: document.getElementById("usaMonth"),
-        universalMonth: document.getElementById("universalMonth"),
-        extraNotes: document.getElementById("extraNotes")
-      };
+</div>
 
-      const previews = {
-        dailyLarge: document.getElementById("dailyPreviewLarge"),
-        fourHourLarge: document.getElementById("fourHourPreviewLarge"),
-        oneHourLarge: document.getElementById("oneHourPreviewLarge"),
-        daily: document.getElementById("dailyPreview"),
-        fourHour: document.getElementById("fourHourPreview"),
-        oneHour: document.getElementById("oneHourPreview"),
-        fifteenMinute: document.getElementById("fifteenMinutePreview")
-      };
+<!-- ── ADD BILL MODAL ── -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <h3>Add a Bill</h3>
+    <div class="type-toggle">
+      <button class="type-btn active" id="type-standard" onclick="setType('standard')">Standard</button>
+      <button class="type-btn" id="type-weekly" onclick="setType('weekly')">Weekly Budget</button>
+    </div>
 
-      const exportEls = {
-        timestamp: document.getElementById("exportTimestamp"),
-        numerology: document.getElementById("exportNumerology"),
-        usaMonth: document.getElementById("exportUsaMonth"),
-        universalMonth: document.getElementById("exportUniversalMonth"),
-        notes: document.getElementById("exportNotes")
-      };
+    <div class="form-fields-standard active" id="fields-standard">
+      <div class="form-group">
+        <label>Name</label>
+        <input type="text" id="f-name" placeholder="e.g. Rent, Netflix…">
+      </div>
+      <div class="form-group">
+        <label>Amount ($)</label>
+        <input type="number" id="f-amount" placeholder="0.00" step="0.01" min="0">
+      </div>
+      <div class="form-group">
+        <label>Due Date</label>
+        <input type="date" id="f-due">
+      </div>
+    </div>
 
-      const statusMessage = document.getElementById("statusMessage");
-      const exportArea = document.getElementById("exportArea");
+    <div class="form-fields-weekly" id="fields-weekly">
+      <div class="form-group">
+        <label>Name</label>
+        <input type="text" id="fw-name" placeholder="e.g. Groceries…">
+      </div>
+      <div class="form-group">
+        <label>Weekly Budget ($)</label>
+        <input type="number" id="fw-budget" placeholder="100.00" step="0.01" min="0">
+      </div>
+      <div class="form-group">
+        <label>First Friday of Range</label>
+        <input type="date" id="fw-start">
+      </div>
+    </div>
 
-      const state = {
-        dailyImage: "",
-        fourHourImage: "",
-        oneHourImage: "",
-        fifteenMinuteImage: ""
-      };
+    <div class="modal-actions">
+      <button class="btn-cancel" id="modal-cancel">Cancel</button>
+      <button class="btn-primary" id="modal-save">Add Bill</button>
+    </div>
+  </div>
+</div>
 
-      function setStatus(message) {
-        statusMessage.textContent = message;
+<script>
+// ── STATE ──────────────────────────────────────────────────────────
+let state = {
+  moneyHave: 0,
+  bills: [],      // { id, type:'standard', name, amount, dueDate, paid }
+  weekly: [],     // { id, name, weeklyBudget, startFriday, weeks:[{id,start,end,logs:[{id,label,amount}]}] }
+  monthOffset: 0  // 0 = current month
+};
+
+function loadState() {
+  try {
+    const s = localStorage.getItem('budget_v2');
+    if (s) state = JSON.parse(s);
+  } catch(e) {}
+}
+function saveState() {
+  localStorage.setItem('budget_v2', JSON.stringify(state));
+}
+loadState();
+
+// ── HELPERS ────────────────────────────────────────────────────────
+function uid() { return Math.random().toString(36).slice(2,9); }
+
+function getMonthYear() {
+  const d = new Date();
+  d.setDate(1);
+  d.setMonth(d.getMonth() + state.monthOffset);
+  return { month: d.getMonth(), year: d.getFullYear() };
+}
+
+function fmt$(n) {
+  return '$' + Math.abs(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+function parseDate(s) {
+  // parse YYYY-MM-DD safely
+  const [y,m,d] = s.split('-').map(Number);
+  return new Date(y, m-1, d);
+}
+
+function formatRange(start, end) {
+  const s = parseDate(start);
+  const e = parseDate(end);
+  const mo = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const sf = `${mo[s.getMonth()]} ${s.getDate()}`;
+  const ef = `${mo[e.getMonth()]} ${e.getDate()}`;
+  return `${sf} – ${ef}`;
+}
+
+function formatDue(dateStr) {
+  const d = parseDate(dateStr);
+  const mo = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${mo[d.getMonth()]} ${d.getDate()}`;
+}
+
+function daysBetween(dateStr) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const d = parseDate(dateStr);
+  return Math.round((d - today) / 86400000);
+}
+
+// generate week ranges (Fri–Thu) from startFriday covering the given month
+function generateWeeks(startFriday, month, year) {
+  const weeks = [];
+  let cur = parseDate(startFriday);
+  // go back if needed to cover month start
+  while (true) {
+    const prev = new Date(cur); prev.setDate(prev.getDate() - 7);
+    const prevEnd = new Date(prev); prevEnd.setDate(prevEnd.getDate() + 6);
+    if (prevEnd.getMonth() >= month && prevEnd.getFullYear() >= year) {
+      cur = prev;
+    } else break;
+  }
+  // generate weeks until past end of month
+  const monthEnd = new Date(year, month + 1, 0);
+  while (cur <= monthEnd) {
+    const end = new Date(cur); end.setDate(end.getDate() + 6);
+    const pad = n => String(n).padStart(2,'0');
+    const toStr = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+    weeks.push({ startStr: toStr(cur), endStr: toStr(end) });
+    cur.setDate(cur.getDate() + 7);
+  }
+  return weeks;
+}
+
+// ── OVERVIEW CALC ──────────────────────────────────────────────────
+function calcTotals() {
+  const { month, year } = getMonthYear();
+  let total = 0;
+
+  // standard bills in this month
+  state.bills.forEach(b => {
+    if (!b.dueDate) return;
+    const d = parseDate(b.dueDate);
+    if (d.getMonth() === month && d.getFullYear() === year) {
+      total += parseFloat(b.amount) || 0;
+    }
+  });
+
+  // weekly budgets: sum caps for weeks in this month
+  state.weekly.forEach(w => {
+    const weeks = generateWeeks(w.startFriday, month, year);
+    weeks.forEach(wk => {
+      const start = parseDate(wk.startStr);
+      const end   = parseDate(wk.endStr);
+      // include if overlaps the month
+      const monthStart = new Date(year, month, 1);
+      const monthEndD  = new Date(year, month+1, 0);
+      if (start <= monthEndD && end >= monthStart) {
+        total += parseFloat(w.weeklyBudget) || 0;
       }
+    });
+  });
 
-      function formatTimestamp(date = new Date()) {
-        return date.toLocaleString(undefined, {
-          year: "numeric",
-          month: "short",
-          day: "2-digit",
-          hour: "2-digit",
-          minute: "2-digit"
-        });
+  const have = parseFloat(state.moneyHave) || 0;
+  const after = have - total;
+  const needEarn = after < 0 ? Math.abs(after) : 0;
+
+  document.getElementById('total-owed').textContent = fmt$(total);
+  const afterEl = document.getElementById('after-bills');
+  afterEl.textContent = (after < 0 ? '-' : '') + fmt$(after);
+  afterEl.className = 'stat-value ' + (after < 0 ? 'negative' : after < total * 0.1 ? 'warn' : 'positive');
+
+  const needEl = document.getElementById('need-earn');
+  needEl.textContent = fmt$(needEarn);
+  needEl.className = 'stat-value ' + (needEarn > 0 ? 'negative' : 'positive');
+}
+
+// ── RENDER ────────────────────────────────────────────────────────
+function render() {
+  const { month, year } = getMonthYear();
+  const mo = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  document.getElementById('month-label').textContent = `${mo[month]} ${year}`;
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  const list = document.getElementById('bills-list');
+
+  // collect all rows with a sort key (date)
+  let rows = [];
+
+  // standard bills
+  state.bills.forEach(b => {
+    if (b.dueDate) {
+      const d = parseDate(b.dueDate);
+      if (d.getMonth() === month && d.getFullYear() === year) {
+        rows.push({ sortDate: d, type: 'standard', data: b });
       }
+    }
+  });
 
-      function updateExportArea() {
-        exportEls.timestamp.textContent = `Generated on ${formatTimestamp()}`;
-        exportEls.numerology.textContent = fields.numerologyDay.value.trim() || "—";
-        exportEls.usaMonth.textContent = fields.usaMonth.value.trim() || "—";
-        exportEls.universalMonth.textContent = fields.universalMonth.value.trim() || "—";
-        exportEls.notes.textContent = fields.extraNotes.value.trim() || "—";
-        previews.dailyLarge.src = state.dailyImage || "";
-        previews.fourHourLarge.src = state.fourHourImage || "";
-        previews.oneHourLarge.src = state.oneHourImage || "";
-        previews.daily.src = state.dailyImage || "";
-        previews.fourHour.src = state.fourHourImage || "";
-        previews.oneHour.src = state.oneHourImage || "";
-        previews.fifteenMinute.src = state.fifteenMinuteImage || "";
+  // weekly rows
+  state.weekly.forEach(w => {
+    const weeks = generateWeeks(w.startFriday, month, year);
+    weeks.forEach((wk, idx) => {
+      const start = parseDate(wk.startStr);
+      const end   = parseDate(wk.endStr);
+      const monthStart = new Date(year, month, 1);
+      const monthEndD  = new Date(year, month+1, 0);
+      if (start <= monthEndD && end >= monthStart) {
+        rows.push({ sortDate: start, type: 'weekly', data: w, wk, weekIdx: idx });
       }
+    });
+  });
 
-      function saveEntry() {
-        const payload = {
-          dailyImage: state.dailyImage,
-          fourHourImage: state.fourHourImage,
-          oneHourImage: state.oneHourImage,
-          fifteenMinuteImage: state.fifteenMinuteImage,
-          numerologyDay: fields.numerologyDay.value.trim(),
-          usaMonth: fields.usaMonth.value.trim(),
-          universalMonth: fields.universalMonth.value.trim(),
-          extraNotes: fields.extraNotes.value.trim(),
-          savedAt: new Date().toISOString()
-        };
+  rows.sort((a, b) => a.sortDate - b.sortDate);
 
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-        setStatus(`Saved ${formatTimestamp()}.`);
-      }
+  // build HTML
+  let html = '';
+  if (rows.length === 0) {
+    html = '<div class="empty-state" id="empty-state">no bills added yet — hit + add bill to get started</div>';
+  }
 
-      function loadEntry() {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (!raw) return;
-        try {
-          const payload = JSON.parse(raw);
-          state.dailyImage = payload.dailyImage || "";
-          state.fourHourImage = payload.fourHourImage || "";
-          state.oneHourImage = payload.oneHourImage || "";
-          state.fifteenMinuteImage = payload.fifteenMinuteImage || "";
-          fields.numerologyDay.value = payload.numerologyDay || "";
-          fields.usaMonth.value = payload.usaMonth || "";
-          fields.universalMonth.value = payload.universalMonth || "";
-          fields.extraNotes.value = payload.extraNotes || "";
-          updateExportArea();
-          setStatus(payload.savedAt ? `Loaded saved entry from ${formatTimestamp(new Date(payload.savedAt))}.` : "Entry loaded.");
-        } catch (error) {
-          console.error("Failed to load entry", error);
-        }
-      }
+  rows.forEach(row => {
+    if (row.type === 'standard') {
+      html += renderStandardBill(row.data, today);
+    } else {
+      html += renderWeeklyRow(row.data, row.wk, today);
+    }
+  });
 
-      function clearEntry() {
-        Object.keys(state).forEach(key => { state[key] = ""; });
-        fields.numerologyDay.value = "";
-        fields.usaMonth.value = "";
-        fields.universalMonth.value = "";
-        fields.extraNotes.value = "";
-        fields.dailyShot.value = "";
-        fields.fourHourShot.value = "";
-        fields.oneHourShot.value = "";
-        fields.fifteenMinuteShot.value = "";
-        localStorage.removeItem(STORAGE_KEY);
-        updateExportArea();
-        setStatus("Entry cleared.");
-      }
+  list.innerHTML = html;
+  bindBillEvents();
+  calcTotals();
+}
 
-      function handleFile(input, key) {
-        const file = input.files && input.files[0];
-        if (!file) return;
-        const maxBytes = MAX_IMAGE_MB * 1024 * 1024;
-        if (file.size > maxBytes) {
-          alert(`Image is too large. Please use a file under ${MAX_IMAGE_MB}MB.`);
-          input.value = "";
-          return;
-        }
+function renderStandardBill(b, today) {
+  const days = daysBetween(b.dueDate);
+  let statusClass = '';
+  let statusTag = '';
+  if (b.paid) {
+    statusClass = 'paid';
+    statusTag = '<span class="tag-paid">paid</span>';
+  } else if (days < 0) {
+    statusClass = 'overdue';
+    statusTag = `<span class="tag-overdue">overdue by ${Math.abs(days)}d</span>`;
+  } else if (days <= 5) {
+    statusClass = 'due-soon';
+    statusTag = `<span class="tag-soon">due in ${days}d</span>`;
+  }
 
-        const reader = new FileReader();
-        reader.onload = event => {
-          state[key] = event.target.result;
-          updateExportArea();
-        };
-        reader.readAsDataURL(file);
-      }
+  return `
+  <div class="bill-row ${statusClass}" data-id="${b.id}">
+    <div class="bill-check ${b.paid ? 'checked' : ''}" onclick="togglePaid('${b.id}')"></div>
+    <div class="bill-info">
+      <div class="bill-name">${esc(b.name)}</div>
+      <div class="bill-meta">due ${formatDue(b.dueDate)} &nbsp; ${statusTag}</div>
+    </div>
+    <div class="bill-amount">${fmt$(b.amount)}</div>
+    <div class="bill-actions">
+      <button class="bill-btn danger" onclick="deleteBill('${b.id}')">remove</button>
+    </div>
+  </div>`;
+}
 
-      fields.dailyShot.addEventListener("change", () => handleFile(fields.dailyShot, "dailyImage"));
-      fields.fourHourShot.addEventListener("change", () => handleFile(fields.fourHourShot, "fourHourImage"));
-      fields.oneHourShot.addEventListener("change", () => handleFile(fields.oneHourShot, "oneHourImage"));
-      fields.fifteenMinuteShot.addEventListener("change", () => handleFile(fields.fifteenMinuteShot, "fifteenMinuteImage"));
+function renderWeeklyRow(w, wk, today) {
+  const start = parseDate(wk.startStr);
+  const end   = parseDate(wk.endStr);
+  const isPast = end < today;
 
-      document.getElementById("saveEntry").addEventListener("click", () => {
-        saveEntry();
-        updateExportArea();
-      });
+  // find existing week data
+  const weekKey = `${w.id}_${wk.startStr}`;
+  if (!w.weekData) w.weekData = {};
+  if (!w.weekData[wk.startStr]) w.weekData[wk.startStr] = { logs: [] };
+  const wd = w.weekData[wk.startStr];
 
-      document.getElementById("clearEntry").addEventListener("click", () => {
-        if (confirm("Clear this entry? This removes saved data from this browser.")) {
-          clearEntry();
-        }
-      });
+  const spent = wd.logs.reduce((s, l) => s + (parseFloat(l.amount)||0), 0);
+  const cap = parseFloat(w.weeklyBudget) || 0;
+  const remaining = cap - spent;
+  const pct = cap > 0 ? Math.min(spent / cap, 1) * 100 : 0;
 
-      document.getElementById("exportPdf").addEventListener("click", () => {
-        updateExportArea();
-        exportArea.classList.add("active");
-        setTimeout(() => {
-          window.print();
-        }, 100);
-      });
+  let barClass = pct >= 100 ? 'over' : pct >= 75 ? 'warn' : '';
+  let remClass = remaining < 0 ? 'over' : remaining < cap * 0.25 ? 'warn' : 'ok';
+  let rowClass = remaining < 0 ? 'week-over' : isPast ? 'week-past' : '';
 
-      [fields.numerologyDay, fields.usaMonth, fields.universalMonth, fields.extraNotes].forEach(input => {
-        input.addEventListener("input", updateExportArea);
-      });
+  const logsHtml = wd.logs.map(l => `
+    <div class="week-log-entry">
+      <span>${esc(l.label || 'purchase')}</span>
+      <span style="display:flex;align-items:center;gap:8px;">
+        <span>${fmt$(l.amount)}</span>
+        <button class="log-del" onclick="deleteLog('${w.id}','${wk.startStr}','${l.id}')">✕</button>
+      </span>
+    </div>`).join('');
 
-      loadEntry();
-      updateExportArea();
-    })();
-  </script>
+  return `
+  <div class="week-row ${rowClass}" data-wkey="${weekKey}">
+    <div class="week-header">
+      <div>
+        <div class="week-name">${esc(w.name)}</div>
+        <div class="week-range">${formatRange(wk.startStr, wk.endStr)}</div>
+      </div>
+      <div class="week-totals">
+        <div class="week-spent">${fmt$(spent)} <span style="color:var(--muted);font-size:0.75rem;">/ ${fmt$(cap)}</span></div>
+        <div class="week-remaining ${remClass}">${remaining >= 0 ? fmt$(remaining) + ' left' : fmt$(Math.abs(remaining)) + ' over'}</div>
+      </div>
+      <div class="bill-actions">
+        <button class="bill-btn" onclick="toggleLogForm('${w.id}','${wk.startStr}')">+ log</button>
+        <button class="bill-btn danger" onclick="deleteWeekly('${w.id}')">remove</button>
+      </div>
+    </div>
+    <div class="week-bar-wrap">
+      <div class="week-bar ${barClass}" style="width:${pct}%"></div>
+    </div>
+    ${wd.logs.length > 0 ? `<div class="week-logs">${logsHtml}</div>` : ''}
+    <div class="log-form-wrap" id="logform-${w.id}-${wk.startStr.replace(/-/g,'')}" style="margin-top:10px;gap:6px;">
+      <input class="week-log-label" id="loglabel-${w.id}-${wk.startStr.replace(/-/g,'')}" placeholder="note (optional)">
+      <input class="week-log-input" id="logamt-${w.id}-${wk.startStr.replace(/-/g,'')}" type="number" placeholder="$0.00" step="0.01" min="0">
+      <button class="bill-btn" onclick="addLog('${w.id}','${wk.startStr}')">add</button>
+    </div>
+  </div>`;
+}
+
+// ── ACTIONS ───────────────────────────────────────────────────────
+function togglePaid(id) {
+  const b = state.bills.find(x => x.id === id);
+  if (b) { b.paid = !b.paid; saveState(); render(); }
+}
+
+function deleteBill(id) {
+  state.bills = state.bills.filter(x => x.id !== id);
+  saveState(); render();
+}
+
+function deleteWeekly(id) {
+  if (!confirm('Remove this weekly budget and all its data?')) return;
+  state.weekly = state.weekly.filter(x => x.id !== id);
+  saveState(); render();
+}
+
+function toggleLogForm(wid, startStr) {
+  const key = `${wid}-${startStr.replace(/-/g,'')}`;
+  const el = document.getElementById('logform-' + key);
+  if (el) el.classList.toggle('open');
+}
+
+function addLog(wid, startStr) {
+  const key = `${wid}-${startStr.replace(/-/g,'')}`;
+  const amtEl = document.getElementById('logamt-' + key);
+  const lblEl = document.getElementById('loglabel-' + key);
+  const amt = parseFloat(amtEl?.value);
+  if (!amt || amt <= 0) return;
+  const label = lblEl?.value.trim() || 'purchase';
+
+  const w = state.weekly.find(x => x.id === wid);
+  if (!w) return;
+  if (!w.weekData) w.weekData = {};
+  if (!w.weekData[startStr]) w.weekData[startStr] = { logs: [] };
+  w.weekData[startStr].logs.push({ id: uid(), label, amount: amt });
+  saveState(); render();
+}
+
+function deleteLog(wid, startStr, lid) {
+  const w = state.weekly.find(x => x.id === wid);
+  if (!w || !w.weekData?.[startStr]) return;
+  w.weekData[startStr].logs = w.weekData[startStr].logs.filter(l => l.id !== lid);
+  saveState(); render();
+}
+
+function bindBillEvents() {
+  // nothing extra needed — all inline onclick
+}
+
+// ── MODAL ─────────────────────────────────────────────────────────
+let currentType = 'standard';
+function setType(t) {
+  currentType = t;
+  document.getElementById('type-standard').classList.toggle('active', t === 'standard');
+  document.getElementById('type-weekly').classList.toggle('active', t === 'weekly');
+  document.getElementById('fields-standard').classList.toggle('active', t === 'standard');
+  document.getElementById('fields-weekly').classList.toggle('active', t === 'weekly');
+}
+
+document.getElementById('add-bill-btn').addEventListener('click', () => {
+  document.getElementById('modal-overlay').classList.add('open');
+  // default due date to today
+  const today = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  const todayStr = `${today.getFullYear()}-${pad(today.getMonth()+1)}-${pad(today.getDate())}`;
+  document.getElementById('f-due').value = todayStr;
+  document.getElementById('fw-start').value = todayStr;
+  setType('standard');
+});
+
+document.getElementById('modal-cancel').addEventListener('click', closeModal);
+document.getElementById('modal-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
+});
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  // clear fields
+  ['f-name','f-amount','fw-name','fw-budget'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+}
+
+document.getElementById('modal-save').addEventListener('click', () => {
+  if (currentType === 'standard') {
+    const name = document.getElementById('f-name').value.trim();
+    const amount = parseFloat(document.getElementById('f-amount').value);
+    const due = document.getElementById('f-due').value;
+    if (!name || !amount || !due) return alert('Please fill in all fields.');
+    state.bills.push({ id: uid(), type: 'standard', name, amount, dueDate: due, paid: false });
+  } else {
+    const name = document.getElementById('fw-name').value.trim();
+    const budget = parseFloat(document.getElementById('fw-budget').value);
+    const start = document.getElementById('fw-start').value;
+    if (!name || !budget || !start) return alert('Please fill in all fields.');
+    state.weekly.push({ id: uid(), name, weeklyBudget: budget, startFriday: start, weekData: {} });
+  }
+  saveState();
+  closeModal();
+  render();
+});
+
+// ── MONTH NAV ─────────────────────────────────────────────────────
+document.getElementById('prev-month').addEventListener('click', () => {
+  state.monthOffset--; saveState(); render();
+});
+document.getElementById('next-month').addEventListener('click', () => {
+  state.monthOffset++; saveState(); render();
+});
+
+// ── MONEY HAVE ────────────────────────────────────────────────────
+const haveInput = document.getElementById('money-have');
+haveInput.value = state.moneyHave || '';
+haveInput.addEventListener('input', () => {
+  state.moneyHave = parseFloat(haveInput.value) || 0;
+  saveState(); calcTotals();
+});
+
+// ── UTIL ──────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ── INIT ──────────────────────────────────────────────────────────
+render();
+</script>
 </body>
 </html>
