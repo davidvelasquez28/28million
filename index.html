@@ -613,7 +613,7 @@
         <input type="number" id="f-amount" placeholder="0.00" step="0.01" min="0">
       </div>
       <div class="form-group">
-        <label>Due Date</label>
+        <label>Due Date <span style="color:var(--muted);font-size:0.55rem;">(optional)</span></label>
         <input type="date" id="f-due">
       </div>
     </div>
@@ -701,26 +701,24 @@ function daysBetween(dateStr) {
   return Math.round((d - today) / 86400000);
 }
 
-// generate week ranges (Fri–Thu) from startFriday covering the given month
+// generate week ranges (Fri-Thu) starting exactly on startFriday
 function generateWeeks(startFriday, month, year) {
   const weeks = [];
+  const pad = n => String(n).padStart(2,'0');
+  const toStr = d => d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
+  const monthStart = new Date(year, month, 1);
+  const monthEnd   = new Date(year, month + 1, 0);
+  // start exactly on the given Friday, never go earlier
   let cur = parseDate(startFriday);
-  // go back if needed to cover month start
-  while (true) {
-    const prev = new Date(cur); prev.setDate(prev.getDate() - 7);
-    const prevEnd = new Date(prev); prevEnd.setDate(prevEnd.getDate() + 6);
-    if (prevEnd.getMonth() >= month && prevEnd.getFullYear() >= year) {
-      cur = prev;
-    } else break;
-  }
-  // generate weeks until past end of month
-  const monthEnd = new Date(year, month + 1, 0);
   while (cur <= monthEnd) {
-    const end = new Date(cur); end.setDate(end.getDate() + 6);
-    const pad = n => String(n).padStart(2,'0');
-    const toStr = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-    weeks.push({ startStr: toStr(cur), endStr: toStr(end) });
-    cur.setDate(cur.getDate() + 7);
+    const end = new Date(cur.getTime());
+    end.setDate(end.getDate() + 6);
+    if (end >= monthStart) {
+      weeks.push({ startStr: toStr(cur), endStr: toStr(end) });
+    }
+    const next = new Date(cur.getTime());
+    next.setDate(next.getDate() + 7);
+    cur = next;
   }
   return weeks;
 }
@@ -730,13 +728,9 @@ function calcTotals() {
   const { month, year } = getMonthYear();
   let total = 0;
 
-  // standard bills in this month
+  // all standard bills (no month filter)
   state.bills.forEach(b => {
-    if (!b.dueDate) return;
-    const d = parseDate(b.dueDate);
-    if (d.getMonth() === month && d.getFullYear() === year) {
-      total += parseFloat(b.amount) || 0;
-    }
+    total += parseFloat(b.amount) || 0;
   });
 
   // weekly budgets: sum caps for weeks in this month
@@ -780,14 +774,10 @@ function render() {
   // collect all rows with a sort key (date)
   let rows = [];
 
-  // standard bills
+  // standard bills — always show all, no month filter
   state.bills.forEach(b => {
-    if (b.dueDate) {
-      const d = parseDate(b.dueDate);
-      if (d.getMonth() === month && d.getFullYear() === year) {
-        rows.push({ sortDate: d, type: 'standard', data: b });
-      }
-    }
+    const sortDate = b.dueDate ? parseDate(b.dueDate) : new Date(year, month, 32); // no date sorts to end
+    rows.push({ sortDate, type: 'standard', data: b });
   });
 
   // weekly rows
@@ -816,7 +806,7 @@ function render() {
     if (row.type === 'standard') {
       html += renderStandardBill(row.data, today);
     } else {
-      html += renderWeeklyRow(row.data, row.wk, today);
+      html += renderWeeklyRow(row.data, row.wk, today, row.weekIdx);
     }
   });
 
@@ -826,18 +816,27 @@ function render() {
 }
 
 function renderStandardBill(b, today) {
-  const days = daysBetween(b.dueDate);
   let statusClass = '';
   let statusTag = '';
+  let dueLine = '';
+
   if (b.paid) {
     statusClass = 'paid';
     statusTag = '<span class="tag-paid">paid</span>';
-  } else if (days < 0) {
-    statusClass = 'overdue';
-    statusTag = `<span class="tag-overdue">overdue by ${Math.abs(days)}d</span>`;
-  } else if (days <= 5) {
-    statusClass = 'due-soon';
-    statusTag = `<span class="tag-soon">due in ${days}d</span>`;
+    dueLine = b.dueDate ? `due ${formatDue(b.dueDate)} &nbsp; ${statusTag}` : statusTag;
+  } else if (b.dueDate) {
+    const days = daysBetween(b.dueDate);
+    dueLine = `due ${formatDue(b.dueDate)}`;
+    if (days < 0) {
+      statusClass = 'overdue';
+      statusTag = `<span class="tag-overdue">overdue by ${Math.abs(days)}d</span>`;
+    } else if (days <= 5) {
+      statusClass = 'due-soon';
+      statusTag = `<span class="tag-soon">due in ${days}d</span>`;
+    }
+    if (statusTag) dueLine += ` &nbsp; ${statusTag}`;
+  } else {
+    dueLine = '<span style="color:var(--muted)">no due date</span>';
   }
 
   return `
@@ -845,7 +844,7 @@ function renderStandardBill(b, today) {
     <div class="bill-check ${b.paid ? 'checked' : ''}" onclick="togglePaid('${b.id}')"></div>
     <div class="bill-info">
       <div class="bill-name">${esc(b.name)}</div>
-      <div class="bill-meta">due ${formatDue(b.dueDate)} &nbsp; ${statusTag}</div>
+      <div class="bill-meta">${dueLine}</div>
     </div>
     <div class="bill-amount">${fmt$(b.amount)}</div>
     <div class="bill-actions">
@@ -854,7 +853,7 @@ function renderStandardBill(b, today) {
   </div>`;
 }
 
-function renderWeeklyRow(w, wk, today) {
+function renderWeeklyRow(w, wk, today, weekIdx) {
   const start = parseDate(wk.startStr);
   const end   = parseDate(wk.endStr);
   const isPast = end < today;
@@ -896,7 +895,7 @@ function renderWeeklyRow(w, wk, today) {
       </div>
       <div class="bill-actions">
         <button class="bill-btn" onclick="toggleLogForm('${w.id}','${wk.startStr}')">+ log</button>
-        <button class="bill-btn danger" onclick="deleteWeekly('${w.id}')">remove</button>
+        ${weekIdx === 0 ? `<button class="bill-btn danger" onclick="deleteWeekly('${w.id}')">remove</button>` : ''}
       </div>
     </div>
     <div class="week-bar-wrap">
@@ -923,7 +922,9 @@ function deleteBill(id) {
 }
 
 function deleteWeekly(id) {
-  if (!confirm('Remove this weekly budget and all its data?')) return;
+  const w = state.weekly.find(x => x.id === id);
+  if (!w) return;
+  if (!confirm('Remove "' + w.name + '" and all its weekly data?')) return;
   state.weekly = state.weekly.filter(x => x.id !== id);
   saveState(); render();
 }
@@ -990,7 +991,7 @@ document.getElementById('modal-overlay').addEventListener('click', e => {
 function closeModal() {
   document.getElementById('modal-overlay').classList.remove('open');
   // clear fields
-  ['f-name','f-amount','fw-name','fw-budget'].forEach(id => {
+  ['f-name','f-amount','f-due','fw-name','fw-budget'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -1000,8 +1001,8 @@ document.getElementById('modal-save').addEventListener('click', () => {
   if (currentType === 'standard') {
     const name = document.getElementById('f-name').value.trim();
     const amount = parseFloat(document.getElementById('f-amount').value);
-    const due = document.getElementById('f-due').value;
-    if (!name || !amount || !due) return alert('Please fill in all fields.');
+    const due = document.getElementById('f-due').value || null;
+    if (!name || !amount) return alert('Please enter a name and amount.');
     state.bills.push({ id: uid(), type: 'standard', name, amount, dueDate: due, paid: false });
   } else {
     const name = document.getElementById('fw-name').value.trim();
