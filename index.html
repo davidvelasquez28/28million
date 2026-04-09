@@ -3,9 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Trade Checklist</title>
+<title>Budget</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,700;1,300&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -19,9 +18,6 @@
     --text: #e8e8ec;
     --muted: #6b6b7a;
     --red: #ff5c5c;
-    --up: #6af2b0;
-    --down: #ff5c5c;
-    --flat: #6b6b7a;
     --warn: #f2c76a;
   }
 
@@ -69,26 +65,8 @@
     text-transform: uppercase;
     margin-right: auto;
   }
-  .date-ctrl { display: flex; align-items: center; gap: 8px; }
-  .date-ctrl label {
-    font-size: 0.62rem;
-    color: var(--muted);
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-  }
-  .date-ctrl input {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    color: var(--text);
-    font-family: 'DM Mono', monospace;
-    font-size: 0.75rem;
-    padding: 7px 10px;
-    border-radius: 6px;
-    outline: none;
-    color-scheme: dark;
-  }
-  .date-ctrl input:focus { border-color: var(--accent); }
-  .date-ctrl button {
+  .month-ctrl { display: flex; align-items: center; gap: 8px; }
+  .month-ctrl button {
     background: transparent;
     border: 1px solid var(--border);
     color: var(--muted);
@@ -99,18 +77,25 @@
     cursor: pointer;
     transition: color 0.15s, border-color 0.15s;
   }
-  .date-ctrl button:hover { color: var(--accent); border-color: var(--accent); }
+  .month-ctrl button:hover { color: var(--accent); border-color: var(--accent); }
+  .month-label {
+    font-size: 0.75rem;
+    color: var(--text);
+    letter-spacing: 0.08em;
+    min-width: 110px;
+    text-align: center;
+  }
 
   .container {
     position: relative;
     z-index: 1;
-    max-width: 1200px;
+    max-width: 1000px;
     margin: 0 auto;
     padding: 40px 28px 100px;
   }
 
+  /* ── SECTION HEADER ── */
   .section { margin-bottom: 44px; }
-
   .section-head {
     display: flex;
     align-items: baseline;
@@ -135,9 +120,8 @@
     flex: 1;
     height: 1px;
     background: var(--border);
-    margin-left: 8px;
   }
-  .section-head .head-action {
+  .head-action {
     background: transparent;
     border: 1px solid var(--border);
     color: var(--muted);
@@ -150,25 +134,23 @@
     cursor: pointer;
     transition: all 0.15s;
   }
-  .section-head .head-action:hover { color: var(--accent); border-color: var(--accent); }
+  .head-action:hover { color: var(--accent); border-color: var(--accent); }
 
-  /* Reading grid */
-  .reading-grid {
+  /* ── STAT CARDS ── */
+  .stat-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 12px;
   }
   .stat {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 10px;
-    padding: 24px 22px;
-    min-height: 150px;
+    padding: 22px 20px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    position: relative;
-    overflow: hidden;
+    min-height: 130px;
     animation: fadeUp 0.3s ease both;
   }
   @keyframes fadeUp {
@@ -180,1653 +162,948 @@
     color: var(--muted);
     letter-spacing: 0.14em;
     text-transform: uppercase;
-    position: relative;
-    z-index: 1;
   }
   .stat-value {
     font-family: 'Fraunces', serif;
-    font-size: 3rem;
+    font-size: 2.4rem;
     font-weight: 300;
     color: var(--text);
     line-height: 1;
-    letter-spacing: -1.5px;
+    letter-spacing: -1px;
     margin-top: 10px;
-    position: relative;
-    z-index: 1;
   }
-  .stat-value .reduced {
-    color: var(--accent);
-    font-style: italic;
-    font-size: 0.55em;
-    margin-left: 0.1em;
-  }
-  .stat-sub {
-    font-size: 0.65rem;
-    color: var(--muted);
-    margin-top: 8px;
-    position: relative;
-    z-index: 1;
-  }
-  .stat.serpent {
+  .stat-value.positive { color: var(--accent2); }
+  .stat-value.negative { color: var(--red); }
+  .stat-value.warn { color: var(--warn); }
+  .stat.highlight {
+    border-color: rgba(212,242,100,0.3);
     background: linear-gradient(135deg, var(--surface) 0%, #1a1e15 100%);
-    border-color: rgba(212, 242, 100, 0.3);
   }
-  .stat.serpent .stat-label { color: var(--accent); }
-  .snake-svg {
-    position: absolute;
-    right: -10px;
-    bottom: -10px;
-    width: 120px;
-    height: 120px;
-    color: var(--accent);
-    opacity: 0.18;
-    pointer-events: none;
+  .stat.highlight .stat-label { color: var(--accent); }
+
+  /* editable "have" input */
+  .stat-input-wrap { margin-top: 10px; }
+  .stat-input {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Fraunces', serif;
+    font-size: 2.4rem;
+    font-weight: 300;
+    letter-spacing: -1px;
+    width: 100%;
+    outline: none;
+    line-height: 1;
+    transition: border-color 0.15s;
+  }
+  .stat-input:focus { border-color: var(--accent); }
+  .stat-sub {
+    font-size: 0.62rem;
+    color: var(--muted);
+    margin-top: 6px;
   }
 
-  /* Markets */
-  .markets-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 12px;
-  }
-  .market-card {
+  /* ── BILLS LIST ── */
+  .bills-list { display: flex; flex-direction: column; gap: 8px; }
+
+  .bill-row {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 10px;
-    padding: 20px 22px;
+    padding: 16px 18px;
+    display: grid;
+    grid-template-columns: 28px 1fr auto auto;
+    align-items: center;
+    gap: 14px;
+    transition: background 0.15s, opacity 0.2s;
+    animation: fadeUp 0.25s ease both;
+  }
+  .bill-row.paid {
+    opacity: 0.45;
+  }
+  .bill-row.overdue { border-color: rgba(255,92,92,0.35); }
+  .bill-row.due-soon { border-color: rgba(242,199,106,0.35); }
+
+  /* checkbox */
+  .bill-check {
+    width: 20px; height: 20px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: transparent;
     cursor: pointer;
-    transition: background 0.15s, border-color 0.15s;
-    position: relative;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .bill-check:hover { border-color: var(--accent2); }
+  .bill-check.checked {
+    background: var(--accent2);
+    border-color: var(--accent2);
+  }
+  .bill-check.checked::after {
+    content: '✓';
+    color: #0e0e10;
+    font-size: 0.7rem;
+    font-weight: 700;
+  }
+
+  .bill-info { min-width: 0; }
+  .bill-name {
+    font-size: 0.85rem;
+    color: var(--text);
+    white-space: nowrap;
     overflow: hidden;
-    animation: fadeUp 0.3s ease both;
+    text-overflow: ellipsis;
   }
-  .market-card:hover { background: var(--surface2); border-color: var(--muted); }
-  .market-card.selected { background: var(--surface2); border-color: var(--accent); }
-  .market-card.selected::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0;
-    width: 100%; height: 2px;
-    background: var(--accent);
+  .bill-row.paid .bill-name { text-decoration: line-through; color: var(--muted); }
+  .bill-meta {
+    font-size: 0.62rem;
+    color: var(--muted);
+    margin-top: 3px;
+    letter-spacing: 0.06em;
   }
-  .mc-head {
+  .bill-meta .tag-overdue { color: var(--red); }
+  .bill-meta .tag-soon { color: var(--warn); }
+  .bill-meta .tag-paid { color: var(--accent2); }
+
+  .bill-amount {
+    font-family: 'Fraunces', serif;
+    font-size: 1.2rem;
+    font-weight: 300;
+    color: var(--text);
+    text-align: right;
+    white-space: nowrap;
+  }
+  .bill-row.paid .bill-amount { text-decoration: line-through; color: var(--muted); }
+
+  .bill-actions { display: flex; gap: 6px; }
+  .bill-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.06em;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .bill-btn:hover { color: var(--accent); border-color: var(--accent); }
+  .bill-btn.danger:hover { color: var(--red); border-color: var(--red); }
+
+  /* ── WEEKLY BUDGET ROW ── */
+  .week-row {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 18px;
+    animation: fadeUp 0.25s ease both;
+  }
+  .week-row.week-over { border-color: rgba(255,92,92,0.35); }
+  .week-row.week-past { opacity: 0.5; }
+
+  .week-header {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    gap: 14px;
+  }
+  .week-name { font-size: 0.85rem; color: var(--text); }
+  .week-range { font-size: 0.62rem; color: var(--muted); letter-spacing: 0.06em; }
+  .week-totals { text-align: right; }
+  .week-spent {
+    font-family: 'Fraunces', serif;
+    font-size: 1.1rem;
+    font-weight: 300;
+    color: var(--text);
+    white-space: nowrap;
+  }
+  .week-remaining {
+    font-size: 0.62rem;
+    margin-top: 2px;
+    white-space: nowrap;
+  }
+  .week-remaining.ok { color: var(--accent2); }
+  .week-remaining.warn { color: var(--warn); }
+  .week-remaining.over { color: var(--red); }
+
+  .week-bar-wrap {
+    height: 3px;
+    background: var(--surface2);
+    border-radius: 2px;
+    margin-top: 10px;
+    overflow: hidden;
+  }
+  .week-bar {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.3s ease;
+    background: var(--accent2);
+  }
+  .week-bar.warn { background: var(--warn); }
+  .week-bar.over { background: var(--red); width: 100% !important; }
+
+  .week-logs {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .week-log-entry {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 18px;
-  }
-  .mc-symbol {
-    font-family: 'Fraunces', serif;
-    font-weight: 700;
-    font-size: 1.4rem;
-    color: var(--accent);
-    letter-spacing: -0.5px;
-    line-height: 1;
-  }
-  .mc-label {
+    align-items: center;
     font-size: 0.68rem;
     color: var(--muted);
-    margin-top: 4px;
-  }
-  .mc-founded {
-    font-size: 0.6rem;
-    color: var(--muted);
-    letter-spacing: 0.1em;
-    text-align: right;
-    text-transform: uppercase;
-  }
-  .mc-stats {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-    padding-top: 16px;
+    padding: 4px 0;
     border-top: 1px solid var(--border);
   }
-  .mc-stat { text-align: center; }
-  .mc-stat-label {
-    font-size: 0.55rem;
+  .week-log-entry .log-del {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 0.65rem;
+    padding: 0 4px;
+    transition: color 0.15s;
+  }
+  .week-log-entry .log-del:hover { color: var(--red); }
+
+  .week-footer {
+    margin-top: 10px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .week-log-input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    padding: 6px 10px;
+    border-radius: 5px;
+    outline: none;
+    width: 110px;
+    transition: border-color 0.15s;
+  }
+  .week-log-input::placeholder { color: var(--muted); }
+  .week-log-input:focus { border-color: var(--accent); }
+  .week-log-label {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    padding: 6px 10px;
+    border-radius: 5px;
+    outline: none;
+    flex: 1;
+    transition: border-color 0.15s;
+  }
+  .week-log-label::placeholder { color: var(--muted); }
+  .week-log-label:focus { border-color: var(--accent); }
+
+  /* ── ADD BILL MODAL ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(14,14,16,0.85);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px 28px 24px;
+    width: 100%;
+    max-width: 440px;
+    animation: fadeUp 0.2s ease both;
+  }
+  .modal h3 {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-weight: 300;
+    font-size: 1.3rem;
+    color: var(--text);
+    margin-bottom: 20px;
+  }
+  .form-group { margin-bottom: 14px; }
+  .form-group label {
+    display: block;
+    font-size: 0.6rem;
     color: var(--muted);
     letter-spacing: 0.12em;
     text-transform: uppercase;
     margin-bottom: 6px;
   }
-  .mc-stat-value {
-    font-family: 'Fraunces', serif;
-    font-size: 1.3rem;
-    color: var(--text);
-    font-weight: 300;
-    line-height: 1;
-  }
-  .mc-stat-value .reduced {
-    color: var(--accent);
-    font-style: italic;
-    font-size: 0.65em;
-  }
-
-  /* ── RULES ── */
-  .rules-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    overflow: hidden;
-  }
-  .rule-item {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 14px 20px;
-    border-bottom: 1px solid var(--border);
-    transition: background 0.12s;
-  }
-  .rule-item:last-child { border-bottom: none; }
-  .rule-item:hover { background: var(--surface2); }
-
-  .rule-status {
-    width: 28px;
-    height: 28px;
-    border-radius: 6px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.85rem;
-    font-weight: 500;
-    flex-shrink: 0;
-    border: 1px solid var(--border);
+  .form-group input, .form-group select {
+    width: 100%;
     background: var(--surface2);
-    color: var(--muted);
-  }
-  .rule-status.pass {
-    background: rgba(106,242,176,0.12);
-    border-color: var(--up);
-    color: var(--up);
-  }
-  .rule-status.fail {
-    background: rgba(255,92,92,0.12);
-    border-color: var(--down);
-    color: var(--down);
-  }
-  .rule-status.warn {
-    background: rgba(242,199,106,0.12);
-    border-color: var(--warn);
-    color: var(--warn);
-  }
-  .rule-status.manual {
-    cursor: pointer;
-  }
-  .rule-status.manual.checked {
-    background: rgba(106,242,176,0.12);
-    border-color: var(--up);
-    color: var(--up);
-  }
-
-  .rule-body { flex: 1; min-width: 0; }
-  .rule-text {
-    font-size: 0.82rem;
-    color: var(--text);
-    line-height: 1.4;
-  }
-  .rule-meta {
-    font-size: 0.6rem;
-    color: var(--muted);
-    margin-top: 3px;
-    letter-spacing: 0.06em;
-  }
-
-  .rule-delete {
-    background: none;
-    border: none;
-    color: var(--muted);
-    cursor: pointer;
-    font-size: 1.1rem;
-    padding: 4px 8px;
-    border-radius: 4px;
-    opacity: 0;
-    transition: opacity 0.15s, color 0.15s;
-    flex-shrink: 0;
-  }
-  .rule-item:hover .rule-delete { opacity: 1; }
-  .rule-delete:hover { color: var(--red); }
-
-  .rule-add-form {
-    padding: 16px 20px;
-    background: var(--surface2);
-    display: none;
-    flex-direction: column;
-    gap: 10px;
-  }
-  .rule-add-form.active { display: flex; }
-  .rule-add-form select,
-  .rule-add-form input {
-    background: var(--surface);
     border: 1px solid var(--border);
     color: var(--text);
     font-family: 'DM Mono', monospace;
-    font-size: 0.78rem;
+    font-size: 0.8rem;
     padding: 9px 12px;
-    border-radius: 5px;
+    border-radius: 6px;
     outline: none;
+    transition: border-color 0.15s;
+    color-scheme: dark;
   }
-  .rule-add-form select:focus,
-  .rule-add-form input:focus { border-color: var(--accent); }
-  .rule-add-row {
+  .form-group input:focus, .form-group select:focus { border-color: var(--accent); }
+  .form-group select option { background: var(--surface2); }
+
+  .type-toggle {
     display: flex;
     gap: 8px;
-    flex-wrap: wrap;
+    margin-bottom: 18px;
   }
-  .rule-add-row > * { flex: 1; min-width: 110px; }
-  .rule-add-actions {
-    display: flex;
-    gap: 8px;
-    justify-content: flex-end;
+  .type-btn {
+    flex: 1;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+    padding: 9px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-transform: uppercase;
   }
+  .type-btn.active { color: var(--accent); border-color: var(--accent); background: rgba(212,242,100,0.06); }
+
+  .form-fields-standard, .form-fields-weekly { display: none; }
+  .form-fields-standard.active, .form-fields-weekly.active { display: block; }
+
+  .modal-actions { display: flex; gap: 8px; margin-top: 20px; }
   .btn-primary {
+    flex: 1;
     background: var(--accent);
-    color: #0e0e10;
     border: none;
+    color: #0e0e10;
     font-family: 'DM Mono', monospace;
     font-size: 0.72rem;
     font-weight: 500;
-    padding: 8px 16px;
-    border-radius: 5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 10px;
+    border-radius: 6px;
     cursor: pointer;
     transition: opacity 0.15s;
   }
   .btn-primary:hover { opacity: 0.85; }
-  .btn-secondary {
+  .btn-cancel {
     background: transparent;
-    color: var(--muted);
     border: 1px solid var(--border);
+    color: var(--muted);
     font-family: 'DM Mono', monospace;
     font-size: 0.72rem;
-    padding: 8px 16px;
-    border-radius: 5px;
-    cursor: pointer;
-  }
-  .btn-secondary:hover { color: var(--text); border-color: var(--muted); }
-
-  /* Dropdown */
-  .select-row {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    margin-bottom: 18px;
-    flex-wrap: wrap;
-  }
-  .select-row label {
-    font-family: 'Fraunces', serif;
-    font-style: italic;
-    font-weight: 300;
-    font-size: 1.1rem;
-    color: var(--text);
-  }
-  .select-wrap {
-    position: relative;
-    flex: 1;
-    max-width: 360px;
-    min-width: 240px;
-  }
-  .select-wrap select {
-    appearance: none;
-    -webkit-appearance: none;
-    width: 100%;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    color: var(--text);
-    font-family: 'DM Mono', monospace;
-    font-size: 0.82rem;
-    padding: 12px 40px 12px 16px;
-    border-radius: 6px;
-    cursor: pointer;
-    outline: none;
-    transition: border-color 0.15s;
-  }
-  .select-wrap select:focus,
-  .select-wrap select:hover { border-color: var(--accent); }
-  .select-caret {
-    position: absolute;
-    right: 14px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--accent);
-    pointer-events: none;
-    font-size: 0.75rem;
-  }
-
-  /* Trade panel */
-  .trade-panel {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    overflow: hidden;
-    animation: fadeUp 0.3s ease both;
-    display: none;
-  }
-  .trade-panel.active { display: block; }
-
-  .tp-head {
-    padding: 16px 22px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  .tp-badge {
-    background: var(--accent);
-    color: #0e0e10;
-    font-size: 0.62rem;
-    font-weight: 500;
-    letter-spacing: 0.08em;
-    padding: 3px 8px;
-    border-radius: 4px;
-    text-transform: uppercase;
-  }
-  .tp-title {
-    font-family: 'Fraunces', serif;
-    font-style: italic;
-    font-weight: 300;
-    font-size: 1.15rem;
-    color: var(--text);
-    flex: 1;
-  }
-  .tp-export {
-    background: transparent;
-    border: 1px solid var(--accent);
-    color: var(--accent);
-    font-family: 'DM Mono', monospace;
-    font-size: 0.68rem;
     letter-spacing: 0.06em;
-    padding: 7px 14px;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: all 0.15s;
     text-transform: uppercase;
-  }
-  .tp-export:hover { background: var(--accent); color: #0e0e10; }
-  .tp-export:disabled { opacity: 0.5; cursor: wait; }
-
-  .tp-stats {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    border-bottom: 1px solid var(--border);
-  }
-  .tp-stat {
-    padding: 20px;
-    text-align: center;
-    border-right: 1px solid var(--border);
-  }
-  .tp-stat:last-child { border-right: none; }
-  .tp-stat-label {
-    font-size: 0.6rem;
-    color: var(--muted);
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    margin-bottom: 10px;
-  }
-  .tp-stat-value {
-    font-family: 'Fraunces', serif;
-    font-size: 1.9rem;
-    color: var(--text);
-    line-height: 1;
-    font-weight: 300;
-  }
-  .tp-stat-value .reduced {
-    color: var(--accent);
-    font-style: italic;
-    font-size: 0.6em;
-  }
-
-  .alignment {
-    padding: 22px;
-    border-bottom: 1px solid var(--border);
-    text-align: center;
-    background: var(--surface2);
-  }
-  .align-label {
-    font-size: 0.6rem;
-    color: var(--muted);
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    margin-bottom: 12px;
-  }
-  .align-arrows {
-    font-family: 'Fraunces', serif;
-    font-size: 2.4rem;
-    letter-spacing: 0.25em;
-    line-height: 1;
-    margin-bottom: 10px;
-  }
-  .align-arrows .up { color: var(--up); }
-  .align-arrows .down { color: var(--down); }
-  .align-arrows .flat { color: var(--flat); }
-  .align-arrows .pending { color: var(--border); }
-  .align-msg {
-    font-family: 'Fraunces', serif;
-    font-style: italic;
-    font-weight: 300;
-    font-size: 1.1rem;
-    color: var(--text);
-  }
-
-  .timeframes {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    padding: 22px;
-    gap: 16px;
-    border-bottom: 1px solid var(--border);
-  }
-  .tf-block {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 16px;
-  }
-  .tf-label {
-    font-size: 0.6rem;
-    color: var(--muted);
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    margin-bottom: 12px;
-  }
-  .tf-opts { display: flex; flex-direction: column; gap: 7px; }
-  .tf-btn {
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--muted);
-    font-family: 'DM Mono', monospace;
-    font-size: 0.75rem;
-    padding: 10px 12px;
-    border-radius: 5px;
-    cursor: pointer;
-    text-align: left;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    transition: all 0.15s;
-  }
-  .tf-btn:hover { color: var(--text); border-color: var(--muted); }
-  .tf-btn .arrow { font-size: 1rem; width: 14px; display: inline-block; }
-  .tf-btn.up .arrow { color: var(--up); }
-  .tf-btn.down .arrow { color: var(--down); }
-  .tf-btn.flat .arrow { color: var(--flat); }
-  .tf-btn.active.up { background: rgba(106,242,176,0.12); border-color: var(--up); color: var(--text); }
-  .tf-btn.active.down { background: rgba(255,92,92,0.12); border-color: var(--down); color: var(--text); }
-  .tf-btn.active.flat { background: var(--surface); border-color: var(--muted); color: var(--text); }
-
-  .notes-section { padding: 22px; }
-  .notes-label {
-    font-size: 0.6rem;
-    color: var(--muted);
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    margin-bottom: 10px;
-  }
-  .notes-area {
-    width: 100%;
-    min-height: 120px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    color: var(--text);
-    font-family: 'DM Mono', monospace;
-    font-size: 0.82rem;
-    line-height: 1.65;
-    padding: 14px 16px;
+    padding: 10px 16px;
     border-radius: 6px;
-    resize: vertical;
-    outline: none;
-    transition: border-color 0.2s;
-  }
-  .notes-area::placeholder { color: var(--muted); }
-  .notes-area:focus { border-color: var(--accent2); }
-  .notes-area.drag-over {
-    border-color: var(--accent);
-    background: rgba(212,242,100,0.04);
-  }
-
-  .screenshots {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-top: 14px;
-    min-height: 0;
-  }
-  .screenshots:empty { display: none; }
-  .shot {
-    position: relative;
-    width: 130px;
-    height: 80px;
-    border-radius: 6px;
-    overflow: hidden;
-    border: 1px solid var(--border);
-    cursor: pointer;
-    background: var(--surface2);
-    animation: fadeUp 0.2s ease both;
-  }
-  .shot img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-  }
-  .shot:hover { border-color: var(--accent); }
-  .shot-delete {
-    position: absolute;
-    top: 4px;
-    right: 4px;
-    width: 22px;
-    height: 22px;
-    border-radius: 4px;
-    background: rgba(14,14,16,0.85);
-    color: var(--text);
-    border: none;
-    font-size: 0.85rem;
-    cursor: pointer;
-    opacity: 0;
-    transition: opacity 0.15s, color 0.15s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    line-height: 1;
-  }
-  .shot:hover .shot-delete { opacity: 1; }
-  .shot-delete:hover { color: var(--red); }
-
-  .drop-hint {
-    font-size: 0.65rem;
-    color: var(--muted);
-    margin-top: 8px;
-    font-style: italic;
-  }
-
-  .notes-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 12px;
-  }
-  .save-confirm { font-size: 0.68rem; color: var(--muted); letter-spacing: 0.08em; }
-  .save-confirm.saved { color: var(--accent2); }
-  .btn-clear {
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--muted);
-    font-family: 'DM Mono', monospace;
-    font-size: 0.68rem;
-    padding: 7px 14px;
-    border-radius: 5px;
     cursor: pointer;
     transition: all 0.15s;
   }
-  .btn-clear:hover { color: var(--red); border-color: var(--red); }
+  .btn-cancel:hover { color: var(--text); border-color: var(--muted); }
 
-  /* Lightbox */
-  .lightbox {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.92);
-    z-index: 200;
-    display: none;
-    align-items: center;
-    justify-content: center;
+  .empty-state {
+    text-align: center;
     padding: 40px;
-    cursor: pointer;
-  }
-  .lightbox.active { display: flex; }
-  .lightbox img {
-    max-width: 100%;
-    max-height: 100%;
-    border-radius: 6px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    color: var(--muted);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    border: 1px dashed var(--border);
+    border-radius: 10px;
   }
 
-  @media (max-width: 700px) {
-    .timeframes { grid-template-columns: 1fr; }
-    .tp-stats { grid-template-columns: 1fr; }
-    .tp-stat { border-right: none; border-bottom: 1px solid var(--border); }
-    .tp-stat:last-child { border-bottom: none; }
-    .stat-value { font-size: 2.4rem; }
-  }
-  @media (max-width: 560px) {
-    .topbar { flex-wrap: wrap; }
-    .topbar-sub { display: none; }
-  }
+  /* log spend inline form toggle */
+  .log-form-wrap { display: none; }
+  .log-form-wrap.open { display: flex; }
 </style>
 </head>
 <body>
 
-  <div class="topbar">
-    <h1>Trade Checklist</h1>
-    <span class="topbar-sub">pre-trade ritual</span>
-    <div class="date-ctrl">
-      <label for="date-input">date</label>
-      <input type="date" id="date-input">
-      <button id="reset-date">today</button>
+<div class="topbar">
+  <h1>Budget</h1>
+  <span class="topbar-sub">monthly overview</span>
+  <div class="month-ctrl">
+    <button id="prev-month">← prev</button>
+    <span class="month-label" id="month-label"></span>
+    <button id="next-month">next →</button>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ── SECTION 1: OVERVIEW ── -->
+  <div class="section">
+    <div class="section-head">
+      <span class="section-num">01</span>
+      <h2>Overview</h2>
+      <div class="rule"></div>
+    </div>
+    <div class="stat-grid">
+      <div class="stat highlight">
+        <div class="stat-label">Money I Have</div>
+        <div class="stat-input-wrap">
+          <input class="stat-input" id="money-have" type="number" placeholder="0.00" step="0.01" min="0">
+        </div>
+        <div class="stat-sub">tap to edit</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Total Owed</div>
+        <div class="stat-value" id="total-owed">$0.00</div>
+        <div class="stat-sub">all bills this month</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Still Owe</div>
+        <div class="stat-value" id="still-owe">$0.00</div>
+        <div class="stat-sub">unpaid bills remaining</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Need to Earn</div>
+        <div class="stat-value" id="need-earn">$0.00</div>
+        <div class="stat-sub">to cover all expenses</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Left Over</div>
+        <div class="stat-value" id="left-over">$0.00</div>
+        <div class="stat-sub">after all bills paid</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Per Day Needed</div>
+        <div class="stat-value" id="per-day">$0.00</div>
+        <div class="stat-sub" id="per-day-sub">days remaining in month</div>
+      </div>
     </div>
   </div>
 
-  <div class="container">
-
-    <!-- THE READING -->
-    <div class="section">
-      <div class="section-head">
-        <span class="section-num">i.</span>
-        <h2>the reading</h2>
-        <div class="rule"></div>
-      </div>
-      <div class="reading-grid">
-        <div class="stat">
-          <div class="stat-label">Universal Year</div>
-          <div>
-            <div class="stat-value" id="u-year">—</div>
-            <div class="stat-sub" id="u-year-sub">—</div>
-          </div>
-        </div>
-        <div class="stat serpent">
-          <svg class="snake-svg" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M20 25 Q 38 12, 52 28 T 82 42 Q 92 60, 72 70 T 30 78 Q 14 68, 28 54 T 56 48" stroke-linecap="round"/>
-            <circle cx="20" cy="25" r="1.8" fill="currentColor" stroke="none"/>
-            <path d="M17 22 L 20 25 L 23 22" stroke-linecap="round"/>
-          </svg>
-          <div class="stat-label">Personal Year · Serpent</div>
-          <div>
-            <div class="stat-value" id="p-year">—</div>
-            <div class="stat-sub">birthday 9/7</div>
-          </div>
-        </div>
-        <div class="stat">
-          <div class="stat-label">Universal Month</div>
-          <div>
-            <div class="stat-value" id="u-month">—</div>
-            <div class="stat-sub" id="u-month-sub">—</div>
-          </div>
-        </div>
-        <div class="stat">
-          <div class="stat-label">Personal Month</div>
-          <div>
-            <div class="stat-value" id="p-month">—</div>
-            <div class="stat-sub">p.year + current month</div>
-          </div>
-        </div>
-        <div class="stat">
-          <div class="stat-label">Universal Day</div>
-          <div>
-            <div class="stat-value" id="u-day">—</div>
-            <div class="stat-sub" id="u-day-sub">—</div>
-          </div>
-        </div>
-        <div class="stat">
-          <div class="stat-label">Personal Day</div>
-          <div>
-            <div class="stat-value" id="p-day">—</div>
-            <div class="stat-sub">p.month + day of year</div>
-          </div>
-        </div>
-      </div>
+  <!-- ── SECTION 2: BILLS ── -->
+  <div class="section">
+    <div class="section-head">
+      <span class="section-num">02</span>
+      <h2>Bills & Expenses</h2>
+      <div class="rule"></div>
+      <button class="head-action" id="add-bill-btn">+ add bill</button>
     </div>
-
-    <!-- THE MARKETS -->
-    <div class="section">
-      <div class="section-head">
-        <span class="section-num">ii.</span>
-        <h2>the markets</h2>
-        <div class="rule"></div>
-      </div>
-      <div class="markets-grid" id="markets-grid"></div>
+    <div class="bills-list" id="bills-list">
+      <div class="empty-state" id="empty-state">no bills added yet — hit + add bill to get started</div>
     </div>
-
-    <!-- THE RULES -->
-    <div class="section">
-      <div class="section-head">
-        <span class="section-num">iii.</span>
-        <h2>the rules</h2>
-        <div class="rule"></div>
-        <button class="head-action" id="add-rule-btn">+ add rule</button>
-      </div>
-      <div class="rules-card">
-        <div class="rule-add-form" id="rule-add-form">
-          <div class="rule-add-row">
-            <select id="rule-type">
-              <option value="time-avoid">avoid time window</option>
-              <option value="time-prefer">prefer time window</option>
-              <option value="alignment">timeframes must align</option>
-              <option value="manual">manual checklist item</option>
-            </select>
-            <input type="text" id="rule-from" placeholder="from (e.g. 9:00 or 9am)">
-            <input type="text" id="rule-to" placeholder="to (e.g. 10:00 or 10am)">
-          </div>
-          <input type="text" id="rule-text" placeholder="rule description (e.g. 'don't trade during news')">
-          <div class="rule-add-actions">
-            <button class="btn-secondary" id="rule-cancel">cancel</button>
-            <button class="btn-primary" id="rule-save">save rule</button>
-          </div>
-        </div>
-        <div id="rules-list"></div>
-      </div>
-    </div>
-
-    <!-- THE EXECUTION -->
-    <div class="section">
-      <div class="section-head">
-        <span class="section-num">iv.</span>
-        <h2>the execution</h2>
-        <div class="rule"></div>
-      </div>
-
-      <div class="select-row">
-        <label for="market-select">what are we trading?</label>
-        <div class="select-wrap">
-          <select id="market-select">
-            <option value="">— pick a market —</option>
-          </select>
-          <span class="select-caret">▾</span>
-        </div>
-      </div>
-
-      <div class="trade-panel" id="trade-panel">
-        <div class="tp-head">
-          <span class="tp-badge">live</span>
-          <span class="tp-title" id="tp-title">—</span>
-          <button class="tp-export" id="tp-export">export pdf</button>
-        </div>
-
-        <div class="tp-stats" id="tp-stats"></div>
-
-        <div class="alignment">
-          <div class="align-label">alignment · daily · 4h · 1h</div>
-          <div class="align-arrows" id="align-arrows">— — —</div>
-          <div class="align-msg" id="align-msg">awaiting confirmation</div>
-        </div>
-
-        <div class="timeframes">
-          <div class="tf-block">
-            <div class="tf-label">daily</div>
-            <div class="tf-opts" data-tf="daily">
-              <button class="tf-btn up" data-dir="up"><span class="arrow">↑</span> uptrend</button>
-              <button class="tf-btn down" data-dir="down"><span class="arrow">↓</span> downtrend</button>
-              <button class="tf-btn flat" data-dir="flat"><span class="arrow">→</span> consolidating</button>
-            </div>
-          </div>
-          <div class="tf-block">
-            <div class="tf-label">4-hour</div>
-            <div class="tf-opts" data-tf="h4">
-              <button class="tf-btn up" data-dir="up"><span class="arrow">↑</span> uptrend</button>
-              <button class="tf-btn down" data-dir="down"><span class="arrow">↓</span> downtrend</button>
-              <button class="tf-btn flat" data-dir="flat"><span class="arrow">→</span> consolidating</button>
-            </div>
-          </div>
-          <div class="tf-block">
-            <div class="tf-label">1-hour</div>
-            <div class="tf-opts" data-tf="h1">
-              <button class="tf-btn up" data-dir="up"><span class="arrow">↑</span> uptrend</button>
-              <button class="tf-btn down" data-dir="down"><span class="arrow">↓</span> downtrend</button>
-              <button class="tf-btn flat" data-dir="flat"><span class="arrow">→</span> consolidating</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="notes-section">
-          <div class="notes-label">notes</div>
-          <textarea class="notes-area" id="notes" placeholder="entry, stop, target. thesis. feel. drop screenshots in here…"></textarea>
-          <div class="drop-hint">drag and drop chart screenshots anywhere in the notes box</div>
-          <div class="screenshots" id="screenshots"></div>
-          <div class="notes-footer">
-            <span class="save-confirm" id="save-confirm">auto-saves</span>
-            <button class="btn-clear" id="btn-clear">clear this market</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
   </div>
 
-  <!-- Lightbox -->
-  <div class="lightbox" id="lightbox"><img id="lightbox-img" alt=""></div>
+</div>
+
+<!-- ── ADD BILL MODAL ── -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <h3>Add a Bill</h3>
+    <div class="type-toggle">
+      <button class="type-btn active" id="type-standard" onclick="setType('standard')">Standard</button>
+      <button class="type-btn" id="type-weekly" onclick="setType('weekly')">Weekly Budget</button>
+    </div>
+
+    <div class="form-fields-standard active" id="fields-standard">
+      <div class="form-group">
+        <label>Name</label>
+        <input type="text" id="f-name" placeholder="e.g. Rent, Netflix…">
+      </div>
+      <div class="form-group">
+        <label>Amount ($)</label>
+        <input type="number" id="f-amount" placeholder="0.00" step="0.01" min="0">
+      </div>
+      <div class="form-group">
+        <label>Due Date <span style="color:var(--muted);font-size:0.55rem;">(optional)</span></label>
+        <input type="date" id="f-due">
+      </div>
+    </div>
+
+    <div class="form-fields-weekly" id="fields-weekly">
+      <div class="form-group">
+        <label>Name</label>
+        <input type="text" id="fw-name" placeholder="e.g. Groceries…">
+      </div>
+      <div class="form-group">
+        <label>Weekly Budget ($)</label>
+        <input type="number" id="fw-budget" placeholder="100.00" step="0.01" min="0">
+      </div>
+      <div class="form-group">
+        <label>First Friday of Range</label>
+        <input type="date" id="fw-start">
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" id="modal-cancel">Cancel</button>
+      <button class="btn-primary" id="modal-save">Add Bill</button>
+    </div>
+  </div>
+</div>
 
 <script>
-  // ─── NUMEROLOGY ─────────────────────────────────────────────
-  function digitSum(n) { return String(n).split('').reduce((a,b)=>a+Number(b),0); }
-  function reduceToDigit(n) { while(n>9) n=digitSum(n); return n; }
-  function format(n) {
-    const r = reduceToDigit(n);
-    if (n === r) return `<span>${n}</span>`;
-    return `<span>${n}</span><span class="reduced">/${r}</span>`;
-  }
-  function universalYear(y) { return digitSum(y); }
-  function personalYear(bm, bd, date) {
-    const y = date.getFullYear(), m = date.getMonth()+1, d = date.getDate();
-    const passed = (m > bm) || (m === bm && d >= bd);
-    const ref = passed ? y : y - 1;
-    return digitSum(bm) + digitSum(bd) + digitSum(ref);
-  }
-  function universalMonth(date) {
-    return reduceToDigit(date.getMonth()+1) + digitSum(date.getFullYear());
-  }
-  function universalDay(date) {
-    return reduceToDigit(date.getMonth()+1) + reduceToDigit(date.getDate()) + digitSum(date.getFullYear());
-  }
-  // Personal month: personal year + current calendar month number.
-  // BUT the month doesn't flip on the 1st — it flips on the birth day-of-month.
-  // If today's day-of-month is before the birth day-of-month, use the PREVIOUS
-  // calendar month (wrapping to December if we're in January).
-  function personalMonth(bm, bd, date) {
-    const py = personalYear(bm, bd, date);
-    const d = date.getDate();
-    let m = date.getMonth() + 1; // 1-12
-    if (d < bd) {
-      m -= 1;
-      if (m === 0) m = 12;
+// ── STATE ──────────────────────────────────────────────────────────
+let state = {
+  moneyHave: 0,
+  bills: [],      // { id, type:'standard', name, amount, dueDate, paid }
+  weekly: [],     // { id, name, weeklyBudget, startFriday, weeks:[{id,start,end,logs:[{id,label,amount}]}] }
+  monthOffset: 0  // 0 = current month
+};
+
+function loadState() {
+  try {
+    const s = localStorage.getItem('budget_v2');
+    if (s) state = JSON.parse(s);
+  } catch(e) {}
+}
+function saveState() {
+  localStorage.setItem('budget_v2', JSON.stringify(state));
+}
+loadState();
+
+// ── HELPERS ────────────────────────────────────────────────────────
+function uid() { return Math.random().toString(36).slice(2,9); }
+
+function getMonthYear() {
+  const d = new Date();
+  d.setDate(1);
+  d.setMonth(d.getMonth() + state.monthOffset);
+  return { month: d.getMonth(), year: d.getFullYear() };
+}
+
+function fmt$(n) {
+  return '$' + Math.abs(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+function parseDate(s) {
+  // parse YYYY-MM-DD safely
+  const [y,m,d] = s.split('-').map(Number);
+  return new Date(y, m-1, d);
+}
+
+function formatRange(start, end) {
+  const s = parseDate(start);
+  const e = parseDate(end);
+  const mo = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const sf = `${mo[s.getMonth()]} ${s.getDate()}`;
+  const ef = `${mo[e.getMonth()]} ${e.getDate()}`;
+  return `${sf} – ${ef}`;
+}
+
+function formatDue(dateStr) {
+  const d = parseDate(dateStr);
+  const mo = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${mo[d.getMonth()]} ${d.getDate()}`;
+}
+
+function daysBetween(dateStr) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const d = parseDate(dateStr);
+  return Math.round((d - today) / 86400000);
+}
+
+// generate week ranges (Fri-Thu) starting exactly on startFriday
+function generateWeeks(startFriday, month, year) {
+  const weeks = [];
+  const pad = n => String(n).padStart(2,'0');
+  const toStr = d => d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
+  const monthStart = new Date(year, month, 1);
+  const monthEnd   = new Date(year, month + 1, 0);
+  // start exactly on the given Friday, never go earlier
+  let cur = parseDate(startFriday);
+  while (cur <= monthEnd) {
+    const end = new Date(cur.getTime());
+    end.setDate(end.getDate() + 6);
+    if (end >= monthStart) {
+      weeks.push({ startStr: toStr(cur), endStr: toStr(end) });
     }
-    return py + m;
+    const next = new Date(cur.getTime());
+    next.setDate(next.getDate() + 7);
+    cur = next;
   }
+  return weeks;
+}
 
-  // Day-of-year: 1–365 (or 366 in leap years). Resets on Jan 1.
-  function dayOfYear(date) {
-    const start = new Date(date.getFullYear(), 0, 1);
-    const diff = (date - start) + ((start.getTimezoneOffset() - date.getTimezoneOffset()) * 60 * 1000);
-    return Math.floor(diff / 86400000) + 1;
-  }
+// ── OVERVIEW CALC ──────────────────────────────────────────────────
+function calcTotals() {
+  const { month, year } = getMonthYear();
+  const have = parseFloat(state.moneyHave) || 0;
 
-  // Personal day: personal month (compound, not reduced) + day-of-year
-  function personalDay(bm, bd, date) {
-    return personalMonth(bm, bd, date) + dayOfYear(date);
-  }
-
-  // ─── CONFIG ─────────────────────────────────────────────────
-  const USER_BIRTH = { month: 9, day: 7 };
-  const MARKETS = [
-    { symbol: 'XAUUSD', label: 'gold / usd',  birth: { month: 8,  day: 15, year: 1971 } },
-    { symbol: 'BTC',    label: 'bitcoin',     birth: { month: 1,  day: 3,  year: 2009 } },
-    { symbol: 'US30',   label: 'dow jones',   birth: { month: 5,  day: 26, year: 1896 } },
-    { symbol: 'ZEC',    label: 'zcash',       birth: { month: 10, day: 28, year: 2016 } },
-  ];
-
-  const DEFAULT_RULES = [
-    { id: 'r1', type: 'time-avoid', from: '09:00', to: '10:00', text: "don't trade between 9 and 10" },
-    { id: 'r2', type: 'time-prefer', from: '11:00', to: '13:00', text: 'ideal trade window: 11 to 1' },
-    { id: 'r3', type: 'alignment', text: '1h and 4h must align' },
-  ];
-
-  // ─── STATE ──────────────────────────────────────────────────
-  const STORAGE_KEY = 'trade-checklist-v4';
-  function loadState() {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
-    catch (e) { return {}; }
-  }
-  function saveState() {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch (e) {
-      alert('storage full — try removing some screenshots or clearing a market');
-    }
-  }
-  let state = loadState();
-  if (!state.markets) state.markets = {};
-  if (!state.selected) state.selected = null;
-  if (!state.dateOverride) state.dateOverride = null;
-  if (!state.rules) state.rules = DEFAULT_RULES.slice();
-  if (!state.manualChecks) state.manualChecks = {};
-
-  function getActiveDate() {
-    if (state.dateOverride) {
-      const [y, m, d] = state.dateOverride.split('-').map(Number);
-      return new Date(y, m - 1, d);
-    }
-    return new Date();
-  }
-
-  // ─── RENDER: READING ────────────────────────────────────────
-  const monthNames = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
-  function renderReading() {
-    const date = getActiveDate();
-    const y = date.getFullYear(), m = date.getMonth()+1, d = date.getDate();
-    document.getElementById('u-year').innerHTML = format(universalYear(y));
-    document.getElementById('u-year-sub').textContent = String(y);
-    document.getElementById('p-year').innerHTML = format(personalYear(USER_BIRTH.month, USER_BIRTH.day, date));
-    document.getElementById('u-month').innerHTML = format(universalMonth(date));
-    document.getElementById('u-month-sub').textContent = `${monthNames[m-1]} ${y}`;
-    document.getElementById('p-month').innerHTML = format(personalMonth(USER_BIRTH.month, USER_BIRTH.day, date));
-    document.getElementById('u-day').innerHTML = format(universalDay(date));
-    document.getElementById('u-day-sub').textContent = `${m}/${d}/${y}`;
-    document.getElementById('p-day').innerHTML = format(personalDay(USER_BIRTH.month, USER_BIRTH.day, date));
-  }
-
-  // ─── RENDER: MARKETS ────────────────────────────────────────
-  function renderMarkets() {
-    const date = getActiveDate();
-    const grid = document.getElementById('markets-grid');
-    grid.innerHTML = '';
-    MARKETS.forEach(mkt => {
-      const py = personalYear(mkt.birth.month, mkt.birth.day, date);
-      const pm = personalMonth(mkt.birth.month, mkt.birth.day, date);
-      const pd = personalDay(mkt.birth.month, mkt.birth.day, date);
-      const card = document.createElement('div');
-      card.className = 'market-card' + (state.selected === mkt.symbol ? ' selected' : '');
-      card.innerHTML = `
-        <div class="mc-head">
-          <div>
-            <div class="mc-symbol">${mkt.symbol}</div>
-            <div class="mc-label">${mkt.label}</div>
-          </div>
-          <div class="mc-founded">${mkt.birth.month}/${mkt.birth.day}/${mkt.birth.year}</div>
-        </div>
-        <div class="mc-stats">
-          <div class="mc-stat"><div class="mc-stat-label">p.year</div><div class="mc-stat-value">${format(py)}</div></div>
-          <div class="mc-stat"><div class="mc-stat-label">p.month</div><div class="mc-stat-value">${format(pm)}</div></div>
-          <div class="mc-stat"><div class="mc-stat-label">p.day</div><div class="mc-stat-value">${format(pd)}</div></div>
-        </div>
-      `;
-      card.addEventListener('click', () => {
-        state.selected = mkt.symbol;
-        saveState();
-        renderMarkets();
-        renderTradePanel();
-        document.getElementById('trade-panel').scrollIntoView({ behavior: 'smooth', block: 'center' });
-      });
-      grid.appendChild(card);
+  // totalOwed: full month cost, never changes with paid status
+  let totalOwed = 0;
+  state.bills.forEach(b => { totalOwed += parseFloat(b.amount) || 0; });
+  state.weekly.forEach(w => {
+    generateWeeks(w.startFriday, month, year).forEach(wk => {
+      totalOwed += parseFloat(w.weeklyBudget) || 0;
     });
+  });
+
+  // stillOwe: only unpaid/unchecked amounts remaining
+  let stillOwe = 0;
+  state.bills.forEach(b => {
+    if (!b.paid) stillOwe += parseFloat(b.amount) || 0;
+  });
+  state.weekly.forEach(w => {
+    generateWeeks(w.startFriday, month, year).forEach(wk => {
+      if (!w.weekData) w.weekData = {};
+      const wd = w.weekData[wk.startStr] || { logs: [], checked: false };
+      const spent = wd.logs.reduce((s, l) => s + (parseFloat(l.amount)||0), 0);
+      const cap = parseFloat(w.weeklyBudget) || 0;
+      const isChecked = wd.checked || spent >= cap;
+      if (!isChecked) stillOwe += cap;
+    });
+  });
+
+  // needEarn: gap between total owed and what you have (0 if covered)
+  const needEarn = Math.max(totalOwed - have, 0);
+
+  // leftOver: surplus only once fully covered, otherwise 0
+  const leftOver = have > totalOwed ? have - totalOwed : 0;
+
+  // per-day: stillOwe / days left in month including today
+  const now = new Date();
+  const isCurrentMonth = (now.getMonth() === month && now.getFullYear() === year);
+  const daysLeft = isCurrentMonth
+    ? new Date(year, month + 1, 0).getDate() - now.getDate() + 1
+    : new Date(year, month + 1, 0).getDate();
+  const perDay = (daysLeft > 0 && stillOwe > 0) ? stillOwe / daysLeft : 0;
+
+  // update DOM
+  document.getElementById('total-owed').textContent = fmt$(totalOwed);
+
+  const stillEl = document.getElementById('still-owe');
+  stillEl.textContent = fmt$(stillOwe);
+  stillEl.className = 'stat-value ' + (stillOwe > 0 ? 'negative' : 'positive');
+
+  const needEl = document.getElementById('need-earn');
+  needEl.textContent = fmt$(needEarn);
+  needEl.className = 'stat-value ' + (needEarn > 0 ? 'negative' : 'positive');
+
+  const leftEl = document.getElementById('left-over');
+  leftEl.textContent = fmt$(leftOver);
+  leftEl.className = 'stat-value ' + (leftOver > 0 ? 'positive' : '');
+
+  const perDayEl = document.getElementById('per-day');
+  const perDaySubEl = document.getElementById('per-day-sub');
+  perDayEl.textContent = fmt$(perDay);
+  perDayEl.className = 'stat-value ' + (perDay > 0 ? 'warn' : 'positive');
+  perDaySubEl.textContent = daysLeft + ' day' + (daysLeft === 1 ? '' : 's') + ' left in ' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][month];
+}
+
+// ── RENDER ────────────────────────────────────────────────────────
+function render() {
+  const { month, year } = getMonthYear();
+  const mo = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  document.getElementById('month-label').textContent = `${mo[month]} ${year}`;
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  const list = document.getElementById('bills-list');
+
+  // collect all rows with a sort key (date)
+  let rows = [];
+
+  // standard bills — always show all, no month filter
+  state.bills.forEach(b => {
+    const sortDate = b.dueDate ? parseDate(b.dueDate) : new Date(year, month, 32); // no date sorts to end
+    rows.push({ sortDate, type: 'standard', data: b });
+  });
+
+  // weekly rows
+  state.weekly.forEach(w => {
+    const weeks = generateWeeks(w.startFriday, month, year);
+    weeks.forEach((wk, idx) => {
+      const start = parseDate(wk.startStr);
+      const end   = parseDate(wk.endStr);
+      const monthStart = new Date(year, month, 1);
+      const monthEndD  = new Date(year, month+1, 0);
+      if (start <= monthEndD && end >= monthStart) {
+        rows.push({ sortDate: start, type: 'weekly', data: w, wk, weekIdx: idx });
+      }
+    });
+  });
+
+  rows.sort((a, b) => a.sortDate - b.sortDate);
+
+  // build HTML
+  let html = '';
+  if (rows.length === 0) {
+    html = '<div class="empty-state" id="empty-state">no bills added yet — hit + add bill to get started</div>';
   }
 
-  // ─── RULES ──────────────────────────────────────────────────
-  function parseTimeStr(s) {
-    if (!s) return null;
-    s = s.trim().toLowerCase();
-    let h, m = 0, pm = false, am = false;
-    if (s.endsWith('pm')) { pm = true; s = s.slice(0, -2).trim(); }
-    else if (s.endsWith('am')) { am = true; s = s.slice(0, -2).trim(); }
-    if (s.includes(':')) {
-      const [hh, mm] = s.split(':');
-      h = parseInt(hh, 10);
-      m = parseInt(mm, 10) || 0;
+  const seenWeeklyIds = new Set();
+  rows.forEach(row => {
+    if (row.type === 'standard') {
+      html += renderStandardBill(row.data, today);
     } else {
-      h = parseInt(s, 10);
+      const isFirst = !seenWeeklyIds.has(row.data.id);
+      seenWeeklyIds.add(row.data.id);
+      html += renderWeeklyRow(row.data, row.wk, today, isFirst);
     }
-    if (isNaN(h)) return null;
-    if (pm && h < 12) h += 12;
-    if (am && h === 12) h = 0;
-    return h * 60 + m;
-  }
-  function formatTimeMin(min) {
-    const h = Math.floor(min / 60);
-    const m = min % 60;
-    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
-  }
-  function nowMinutes() {
-    const d = new Date();
-    return d.getHours() * 60 + d.getMinutes();
-  }
+  });
 
-  function evalRule(rule, marketState) {
-    if (rule.type === 'time-avoid') {
-      const f = parseTimeStr(rule.from), t = parseTimeStr(rule.to);
-      if (f === null || t === null) return { status: 'unknown', label: 'invalid time' };
-      const now = nowMinutes();
-      const inWindow = now >= f && now <= t;
-      return inWindow
-        ? { status: 'fail', label: `currently inside avoid window (${formatTimeMin(now)})` }
-        : { status: 'pass', label: `outside avoid window (${formatTimeMin(now)})` };
+  list.innerHTML = html;
+  bindBillEvents();
+  calcTotals();
+}
+
+function renderStandardBill(b, today) {
+  let statusClass = '';
+  let statusTag = '';
+  let dueLine = '';
+
+  if (b.paid) {
+    statusClass = 'paid';
+    statusTag = '<span class="tag-paid">paid</span>';
+    dueLine = b.dueDate ? `due ${formatDue(b.dueDate)} &nbsp; ${statusTag}` : statusTag;
+  } else if (b.dueDate) {
+    const days = daysBetween(b.dueDate);
+    dueLine = `due ${formatDue(b.dueDate)}`;
+    if (days < 0) {
+      statusClass = 'overdue';
+      statusTag = `<span class="tag-overdue">overdue by ${Math.abs(days)}d</span>`;
+    } else if (days <= 5) {
+      statusClass = 'due-soon';
+      statusTag = `<span class="tag-soon">due in ${days}d</span>`;
     }
-    if (rule.type === 'time-prefer') {
-      const f = parseTimeStr(rule.from), t = parseTimeStr(rule.to);
-      if (f === null || t === null) return { status: 'unknown', label: 'invalid time' };
-      const now = nowMinutes();
-      const inWindow = now >= f && now <= t;
-      return inWindow
-        ? { status: 'pass', label: `inside ideal window (${formatTimeMin(now)})` }
-        : { status: 'warn', label: `outside ideal window (${formatTimeMin(now)})` };
-    }
-    if (rule.type === 'alignment') {
-      if (!marketState) return { status: 'unknown', label: 'pick a market' };
-      const { daily, h4, h1 } = marketState;
-      if (!h4 || !h1) return { status: 'unknown', label: 'set 1h and 4h trends' };
-      if (h4 === h1) return { status: 'pass', label: `${h4} aligned` };
-      return { status: 'fail', label: `1h is ${h1}, 4h is ${h4}` };
-    }
-    if (rule.type === 'manual') {
-      const checked = !!state.manualChecks[rule.id];
-      return { status: checked ? 'pass' : 'manual', label: checked ? 'checked' : 'tap to mark done', manual: true };
-    }
-    return { status: 'unknown', label: '' };
+    if (statusTag) dueLine += ` &nbsp; ${statusTag}`;
+  } else {
+    dueLine = '<span style="color:var(--muted)">no due date</span>';
   }
 
-  function renderRules() {
-    const list = document.getElementById('rules-list');
-    list.innerHTML = '';
-    const ms = state.selected ? getMarketState(state.selected) : null;
+  return `
+  <div class="bill-row ${statusClass}" data-id="${b.id}">
+    <div class="bill-check ${b.paid ? 'checked' : ''}" onclick="togglePaid('${b.id}')"></div>
+    <div class="bill-info">
+      <div class="bill-name">${esc(b.name)}</div>
+      <div class="bill-meta">${dueLine}</div>
+    </div>
+    <div class="bill-amount">${fmt$(b.amount)}</div>
+    <div class="bill-actions">
+      <button class="bill-btn danger" onclick="deleteBill('${b.id}')">remove</button>
+    </div>
+  </div>`;
+}
 
-    state.rules.forEach(rule => {
-      const result = evalRule(rule, ms);
-      const item = document.createElement('div');
-      item.className = 'rule-item';
-      let icon = '○';
-      if (result.status === 'pass') icon = '✓';
-      else if (result.status === 'fail') icon = '✕';
-      else if (result.status === 'warn') icon = '!';
-      else if (result.manual) icon = state.manualChecks[rule.id] ? '✓' : '○';
+function renderWeeklyRow(w, wk, today, isFirst) {
+  const start = parseDate(wk.startStr);
+  const end   = parseDate(wk.endStr);
+  const isPast = end < today;
 
-      const statusCls = result.manual
-        ? 'manual' + (state.manualChecks[rule.id] ? ' checked' : '')
-        : result.status;
+  // find existing week data
+  const weekKey = `${w.id}_${wk.startStr}`;
+  if (!w.weekData) w.weekData = {};
+  if (!w.weekData[wk.startStr]) w.weekData[wk.startStr] = { logs: [], checked: false };
+  const wd = w.weekData[wk.startStr];
 
-      item.innerHTML = `
-        <div class="rule-status ${statusCls}" data-rule="${rule.id}">${icon}</div>
-        <div class="rule-body">
-          <div class="rule-text">${escapeHtml(rule.text)}</div>
-          <div class="rule-meta">${escapeHtml(result.label)}</div>
+  const spent = wd.logs.reduce((s, l) => s + (parseFloat(l.amount)||0), 0);
+  const cap = parseFloat(w.weeklyBudget) || 0;
+  const remaining = cap - spent;
+  const pct = cap > 0 ? Math.min(spent / cap, 1) * 100 : 0;
+
+  // auto-check if spent >= cap, otherwise respect manual check
+  const isChecked = spent >= cap || !!wd.checked;
+  const autoChecked = spent >= cap;
+
+  let barClass = pct >= 100 ? 'over' : pct >= 75 ? 'warn' : '';
+  let remClass = remaining < 0 ? 'over' : remaining < cap * 0.25 ? 'warn' : 'ok';
+  let rowClass = isChecked ? 'week-done' : remaining < 0 ? 'week-over' : isPast ? 'week-past' : '';
+
+  const logsHtml = wd.logs.map(l => `
+    <div class="week-log-entry">
+      <span>${esc(l.label || 'purchase')}</span>
+      <span style="display:flex;align-items:center;gap:8px;">
+        <span>${fmt$(l.amount)}</span>
+        <button class="log-del" onclick="deleteLog('${w.id}','${wk.startStr}','${l.id}')">✕</button>
+      </span>
+    </div>`).join('');
+
+  return `
+  <div class="week-row ${rowClass}" data-wkey="${weekKey}" style="${isChecked ? 'opacity:0.45' : ''}">
+    <div class="week-header">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div class="bill-check ${isChecked ? 'checked' : ''}"
+          onclick="${autoChecked ? '' : `toggleWeekCheck('${w.id}','${wk.startStr}')`}"
+          style="${autoChecked ? 'cursor:default;opacity:0.7' : ''}"
+          title="${autoChecked ? 'auto-checked: cap reached' : 'mark week as done'}">
         </div>
-        <button class="rule-delete" data-del="${rule.id}" title="delete rule">×</button>
-      `;
-      list.appendChild(item);
-    });
+        <div>
+          <div class="week-name" style="${isChecked ? 'text-decoration:line-through;color:var(--muted)' : ''}">${esc(w.name)}</div>
+          <div class="week-range">${formatRange(wk.startStr, wk.endStr)}</div>
+        </div>
+      </div>
+      <div class="week-totals">
+        <div class="week-spent">${fmt$(spent)} <span style="color:var(--muted);font-size:0.75rem;">/ ${fmt$(cap)}</span></div>
+        <div class="week-remaining ${remClass}">${remaining >= 0 ? fmt$(remaining) + ' left' : fmt$(Math.abs(remaining)) + ' over'}</div>
+      </div>
+      <div class="bill-actions">
+        <button class="bill-btn" onclick="toggleLogForm('${w.id}','${wk.startStr}')">+ log</button>
+        ${isFirst ? `<button class="bill-btn danger" onclick="deleteWeekly('${w.id}')">remove</button>` : ''}
+      </div>
+    </div>
+    <div class="week-bar-wrap">
+      <div class="week-bar ${barClass}" style="width:${pct}%"></div>
+    </div>
+    ${wd.logs.length > 0 ? `<div class="week-logs">${logsHtml}</div>` : ''}
+    <div class="log-form-wrap" id="logform-${w.id}-${wk.startStr.replace(/-/g,'')}" style="margin-top:10px;gap:6px;">
+      <input class="week-log-label" id="loglabel-${w.id}-${wk.startStr.replace(/-/g,'')}" placeholder="note (optional)">
+      <input class="week-log-input" id="logamt-${w.id}-${wk.startStr.replace(/-/g,'')}" type="number" placeholder="$0.00" step="0.01" min="0">
+      <button class="bill-btn" onclick="addLog('${w.id}','${wk.startStr}')">add</button>
+    </div>
+  </div>`;
+}
 
-    // Bind manual checks
-    list.querySelectorAll('.rule-status.manual').forEach(el => {
-      el.addEventListener('click', () => {
-        const id = el.dataset.rule;
-        state.manualChecks[id] = !state.manualChecks[id];
-        saveState();
-        renderRules();
-      });
-    });
-    // Bind delete
-    list.querySelectorAll('[data-del]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const id = btn.dataset.del;
-        if (!confirm('delete this rule?')) return;
-        state.rules = state.rules.filter(r => r.id !== id);
-        delete state.manualChecks[id];
-        saveState();
-        renderRules();
-      });
-    });
-  }
+// ── ACTIONS ───────────────────────────────────────────────────────
+function togglePaid(id) {
+  const b = state.bills.find(x => x.id === id);
+  if (b) { b.paid = !b.paid; saveState(); render(); }
+}
 
-  // Add-rule form
-  function setupRuleForm() {
-    const form = document.getElementById('rule-add-form');
-    const typeSel = document.getElementById('rule-type');
-    const fromIn = document.getElementById('rule-from');
-    const toIn = document.getElementById('rule-to');
-    const textIn = document.getElementById('rule-text');
+function deleteBill(id) {
+  state.bills = state.bills.filter(x => x.id !== id);
+  saveState(); render();
+}
 
-    function updateFormVisibility() {
-      const t = typeSel.value;
-      const showTimes = (t === 'time-avoid' || t === 'time-prefer');
-      fromIn.style.display = showTimes ? '' : 'none';
-      toIn.style.display = showTimes ? '' : 'none';
-    }
-    typeSel.addEventListener('change', updateFormVisibility);
-    updateFormVisibility();
+function deleteWeekly(id) {
+  const w = state.weekly.find(x => x.id === id);
+  if (!w) return;
+  if (!confirm('Remove "' + w.name + '" and all its weekly data?')) return;
+  state.weekly = state.weekly.filter(x => x.id !== id);
+  saveState(); render();
+}
 
-    document.getElementById('add-rule-btn').addEventListener('click', () => {
-      form.classList.toggle('active');
-    });
-    document.getElementById('rule-cancel').addEventListener('click', () => {
-      form.classList.remove('active');
-      fromIn.value = ''; toIn.value = ''; textIn.value = '';
-    });
-    document.getElementById('rule-save').addEventListener('click', () => {
-      const text = textIn.value.trim();
-      if (!text) { alert('add a description'); return; }
-      const rule = {
-        id: 'r' + Date.now(),
-        type: typeSel.value,
-        text,
-      };
-      if (rule.type === 'time-avoid' || rule.type === 'time-prefer') {
-        rule.from = fromIn.value.trim();
-        rule.to = toIn.value.trim();
-        if (parseTimeStr(rule.from) === null || parseTimeStr(rule.to) === null) {
-          alert('invalid time format. use 9:00, 9am, 14:30, etc.');
-          return;
-        }
-      }
-      state.rules.push(rule);
-      saveState();
-      renderRules();
-      form.classList.remove('active');
-      fromIn.value = ''; toIn.value = ''; textIn.value = '';
-    });
-  }
+function toggleWeekCheck(wid, startStr) {
+  const w = state.weekly.find(x => x.id === wid);
+  if (!w) return;
+  if (!w.weekData) w.weekData = {};
+  if (!w.weekData[startStr]) w.weekData[startStr] = { logs: [] };
+  const wd = w.weekData[startStr];
+  const spent = wd.logs.reduce((s, l) => s + (parseFloat(l.amount)||0), 0);
+  const cap = parseFloat(w.weeklyBudget) || 0;
+  // if auto-checked (spent >= cap), ignore manual toggle
+  if (spent >= cap) return;
+  wd.checked = !wd.checked;
+  saveState(); render();
+}
 
-  // ─── TRADE PANEL ────────────────────────────────────────────
-  function getMarketState(symbol) {
-    if (!state.markets[symbol]) {
-      state.markets[symbol] = { daily: null, h4: null, h1: null, notes: '', shots: [] };
-    }
-    if (!state.markets[symbol].shots) state.markets[symbol].shots = [];
-    return state.markets[symbol];
-  }
+function toggleLogForm(wid, startStr) {
+  const key = `${wid}-${startStr.replace(/-/g,'')}`;
+  const el = document.getElementById('logform-' + key);
+  if (el) el.classList.toggle('open');
+}
 
-  function renderTradePanel() {
-    const panel = document.getElementById('trade-panel');
-    const select = document.getElementById('market-select');
-    select.value = state.selected || '';
+function addLog(wid, startStr) {
+  const key = `${wid}-${startStr.replace(/-/g,'')}`;
+  const amtEl = document.getElementById('logamt-' + key);
+  const lblEl = document.getElementById('loglabel-' + key);
+  const amt = parseFloat(amtEl?.value);
+  if (!amt || amt <= 0) return;
+  const label = lblEl?.value.trim() || 'purchase';
 
-    if (!state.selected) { panel.classList.remove('active'); renderRules(); return; }
-    panel.classList.add('active');
+  const w = state.weekly.find(x => x.id === wid);
+  if (!w) return;
+  if (!w.weekData) w.weekData = {};
+  if (!w.weekData[startStr]) w.weekData[startStr] = { logs: [] };
+  w.weekData[startStr].logs.push({ id: uid(), label, amount: amt });
+  saveState(); render();
+}
 
-    const mkt = MARKETS.find(m => m.symbol === state.selected);
-    document.getElementById('tp-title').textContent = `${mkt.symbol} — ${mkt.label}`;
+function deleteLog(wid, startStr, lid) {
+  const w = state.weekly.find(x => x.id === wid);
+  if (!w || !w.weekData?.[startStr]) return;
+  w.weekData[startStr].logs = w.weekData[startStr].logs.filter(l => l.id !== lid);
+  saveState(); render();
+}
 
-    const date = getActiveDate();
-    const py = personalYear(mkt.birth.month, mkt.birth.day, date);
-    const pm = personalMonth(mkt.birth.month, mkt.birth.day, date);
-    const pd = personalDay(mkt.birth.month, mkt.birth.day, date);
-    document.getElementById('tp-stats').innerHTML = `
-      <div class="tp-stat"><div class="tp-stat-label">p. year</div><div class="tp-stat-value">${format(py)}</div></div>
-      <div class="tp-stat"><div class="tp-stat-label">p. month</div><div class="tp-stat-value">${format(pm)}</div></div>
-      <div class="tp-stat"><div class="tp-stat-label">p. day</div><div class="tp-stat-value">${format(pd)}</div></div>
-    `;
+function bindBillEvents() {
+  // nothing extra needed — all inline onclick
+}
 
-    const ms = getMarketState(state.selected);
-    document.querySelectorAll('.tf-opts').forEach(group => {
-      const tf = group.dataset.tf;
-      group.querySelectorAll('.tf-btn').forEach(btn => {
-        btn.classList.toggle('active', ms[tf] === btn.dataset.dir);
-      });
-    });
-    document.getElementById('notes').value = ms.notes || '';
-    renderShots(ms);
-    renderAlignment(ms);
-    renderRules();
-  }
+// ── MODAL ─────────────────────────────────────────────────────────
+let currentType = 'standard';
+function setType(t) {
+  currentType = t;
+  document.getElementById('type-standard').classList.toggle('active', t === 'standard');
+  document.getElementById('type-weekly').classList.toggle('active', t === 'weekly');
+  document.getElementById('fields-standard').classList.toggle('active', t === 'standard');
+  document.getElementById('fields-weekly').classList.toggle('active', t === 'weekly');
+}
 
-  function renderAlignment(ms) {
-    const arrowEl = document.getElementById('align-arrows');
-    const msgEl = document.getElementById('align-msg');
-    const map = { up: ['↑','up'], down: ['↓','down'], flat: ['→','flat'] };
-    const parts = ['daily','h4','h1'].map(tf => {
-      const dir = ms[tf];
-      if (!dir) return '<span class="pending">—</span>';
-      const [sym, cls] = map[dir];
-      return `<span class="${cls}">${sym}</span>`;
-    });
-    arrowEl.innerHTML = parts.join(' ');
+document.getElementById('add-bill-btn').addEventListener('click', () => {
+  document.getElementById('modal-overlay').classList.add('open');
+  // default due date to today
+  const today = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  const todayStr = `${today.getFullYear()}-${pad(today.getMonth()+1)}-${pad(today.getDate())}`;
+  document.getElementById('f-due').value = todayStr;
+  document.getElementById('fw-start').value = todayStr;
+  setType('standard');
+});
 
-    const dirs = [ms.daily, ms.h4, ms.h1];
-    const filled = dirs.filter(Boolean);
-    if (filled.length === 0) msgEl.textContent = 'awaiting confirmation';
-    else if (filled.length < 3) msgEl.textContent = `${filled.length} of 3 set`;
-    else {
-      const allSame = dirs.every(d => d === dirs[0]);
-      if (allSame && dirs[0] === 'up') msgEl.textContent = 'full bullish alignment';
-      else if (allSame && dirs[0] === 'down') msgEl.textContent = 'full bearish alignment';
-      else if (allSame && dirs[0] === 'flat') msgEl.textContent = 'all consolidating — patience';
-      else {
-        const ups = dirs.filter(d => d === 'up').length;
-        const downs = dirs.filter(d => d === 'down').length;
-        if (ups >= 2) msgEl.textContent = 'mixed — bullish lean';
-        else if (downs >= 2) msgEl.textContent = 'mixed — bearish lean';
-        else msgEl.textContent = 'mixed signals — caution';
-      }
-    }
-  }
+document.getElementById('modal-cancel').onclick = closeModal;
+document.getElementById('modal-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
+});
 
-  // ─── SCREENSHOTS ────────────────────────────────────────────
-  function renderShots(ms) {
-    const c = document.getElementById('screenshots');
-    c.innerHTML = '';
-    ms.shots.forEach((dataUrl, idx) => {
-      const el = document.createElement('div');
-      el.className = 'shot';
-      el.innerHTML = `<img src="${dataUrl}" alt="screenshot"><button class="shot-delete" title="delete">×</button>`;
-      el.querySelector('img').addEventListener('click', () => openLightbox(dataUrl));
-      el.querySelector('.shot-delete').addEventListener('click', e => {
-        e.stopPropagation();
-        ms.shots.splice(idx, 1);
-        saveState();
-        renderShots(ms);
-      });
-      c.appendChild(el);
-    });
-  }
-
-  // Compress an image file to a reasonable size before storing
-  function compressImage(file, maxWidth = 1600, quality = 0.82) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = e => {
-        const img = new Image();
-        img.onload = () => {
-          let { width, height } = img;
-          if (width > maxWidth) {
-            height = (maxWidth / width) * height;
-            width = maxWidth;
-          }
-          const canvas = document.createElement('canvas');
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL('image/jpeg', quality));
-        };
-        img.onerror = reject;
-        img.src = e.target.result;
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  }
-
-  async function handleFiles(files) {
-    if (!state.selected) {
-      alert('pick a market first');
-      return;
-    }
-    const ms = getMarketState(state.selected);
-    for (const file of files) {
-      if (!file.type.startsWith('image/')) continue;
-      try {
-        const dataUrl = await compressImage(file);
-        ms.shots.push(dataUrl);
-      } catch (e) {
-        console.error('image processing failed', e);
-      }
-    }
-    saveState();
-    renderShots(ms);
-    flashSaved();
-  }
-
-  // Drag-and-drop on the notes area
-  function setupDragDrop() {
-    const ta = document.getElementById('notes');
-
-    ['dragenter', 'dragover'].forEach(ev => {
-      ta.addEventListener(ev, e => {
-        e.preventDefault();
-        e.stopPropagation();
-        ta.classList.add('drag-over');
-      });
-    });
-    ['dragleave', 'drop'].forEach(ev => {
-      ta.addEventListener(ev, e => {
-        e.preventDefault();
-        e.stopPropagation();
-        ta.classList.remove('drag-over');
-      });
-    });
-    ta.addEventListener('drop', e => {
-      const files = Array.from(e.dataTransfer.files || []);
-      if (files.length) {
-        handleFiles(files);
-        return;
-      }
-      // dragged from a browser tab — try the data
-      const items = e.dataTransfer.items;
-      if (items) {
-        for (const item of items) {
-          if (item.kind === 'file') {
-            const f = item.getAsFile();
-            if (f) handleFiles([f]);
-          }
-        }
-      }
-    });
-
-    // Bonus: paste support
-    ta.addEventListener('paste', e => {
-      const items = e.clipboardData.items;
-      const files = [];
-      for (const item of items) {
-        if (item.type.startsWith('image/')) {
-          const f = item.getAsFile();
-          if (f) files.push(f);
-        }
-      }
-      if (files.length) {
-        e.preventDefault();
-        handleFiles(files);
-      }
-    });
-  }
-
-  // ─── LIGHTBOX ───────────────────────────────────────────────
-  function openLightbox(src) {
-    const lb = document.getElementById('lightbox');
-    document.getElementById('lightbox-img').src = src;
-    lb.classList.add('active');
-  }
-  document.getElementById('lightbox').addEventListener('click', () => {
-    document.getElementById('lightbox').classList.remove('active');
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  // clear fields
+  ['f-name','f-amount','f-due','fw-name','fw-budget'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
   });
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') document.getElementById('lightbox').classList.remove('active');
-  });
+}
 
-  // ─── PDF EXPORT ─────────────────────────────────────────────
-  async function exportPdf() {
-    if (!state.selected) return;
-    const btn = document.getElementById('tp-export');
-    btn.disabled = true;
-    btn.textContent = 'building…';
-
-    try {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-      const W = doc.internal.pageSize.getWidth();
-      const H = doc.internal.pageSize.getHeight();
-      const M = 40; // margin
-      let y = M;
-
-      const mkt = MARKETS.find(m => m.symbol === state.selected);
-      const ms = getMarketState(state.selected);
-      const date = getActiveDate();
-
-      // Header
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(20);
-      doc.setTextColor(20, 20, 20);
-      doc.text(`Trade Checklist — ${mkt.symbol}`, M, y);
-      y += 22;
-
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(10);
-      doc.setTextColor(110, 110, 110);
-      const dateStr = date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-      doc.text(`${mkt.label}  ·  ${dateStr}`, M, y);
-      y += 24;
-
-      // Section: The Reading
-      doc.setDrawColor(220);
-      doc.line(M, y, W - M, y); y += 16;
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(11);
-      doc.setTextColor(20, 20, 20);
-      doc.text('THE READING', M, y); y += 14;
-
-      const u_year = universalYear(date.getFullYear());
-      const p_year = personalYear(USER_BIRTH.month, USER_BIRTH.day, date);
-      const u_month = universalMonth(date);
-      const p_month = personalMonth(USER_BIRTH.month, USER_BIRTH.day, date);
-      const u_day = universalDay(date);
-      const p_day = personalDay(USER_BIRTH.month, USER_BIRTH.day, date);
-
-      const fmtPlain = n => {
-        const r = reduceToDigit(n);
-        return n === r ? String(n) : `${n}/${r}`;
-      };
-
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
-      doc.setTextColor(60, 60, 60);
-      const colW = (W - M*2) / 3;
-      const readings = [
-        ['Universal Year', fmtPlain(u_year)],
-        ['Personal Year', fmtPlain(p_year)],
-        ['Universal Month', fmtPlain(u_month)],
-        ['Personal Month', fmtPlain(p_month)],
-        ['Universal Day', fmtPlain(u_day)],
-        ['Personal Day', fmtPlain(p_day)],
-      ];
-      for (let i = 0; i < readings.length; i++) {
-        const col = i % 3;
-        const row = Math.floor(i / 3);
-        const cx = M + col * colW;
-        const cy = y + row * 30;
-        doc.setTextColor(140, 140, 140);
-        doc.setFontSize(7);
-        doc.text(readings[i][0].toUpperCase(), cx, cy);
-        doc.setTextColor(20, 20, 20);
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(14);
-        doc.text(readings[i][1], cx, cy + 14);
-        doc.setFont('helvetica', 'normal');
-      }
-      y += 70;
-
-      // Section: Market stats
-      doc.setDrawColor(220);
-      doc.line(M, y, W - M, y); y += 16;
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(11);
-      doc.setTextColor(20, 20, 20);
-      doc.text(`${mkt.symbol} NUMBERS`, M, y); y += 14;
-
-      const py = personalYear(mkt.birth.month, mkt.birth.day, date);
-      const pmth = personalMonth(mkt.birth.month, mkt.birth.day, date);
-      const pd2 = personalDay(mkt.birth.month, mkt.birth.day, date);
-      const mktReadings = [
-        ['Personal Year', fmtPlain(py)],
-        ['Personal Month', fmtPlain(pmth)],
-        ['Personal Day', fmtPlain(pd2)],
-      ];
-      for (let i = 0; i < mktReadings.length; i++) {
-        const cx = M + i * colW;
-        doc.setTextColor(140, 140, 140);
-        doc.setFontSize(7);
-        doc.text(mktReadings[i][0].toUpperCase(), cx, y);
-        doc.setTextColor(20, 20, 20);
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(14);
-        doc.text(mktReadings[i][1], cx, y + 14);
-        doc.setFont('helvetica', 'normal');
-      }
-      y += 36;
-
-      // Section: Trends
-      doc.setDrawColor(220);
-      doc.line(M, y, W - M, y); y += 16;
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(11);
-      doc.setTextColor(20, 20, 20);
-      doc.text('TRENDS', M, y); y += 14;
-
-      const trendLabel = d => d ? d.toUpperCase() : '—';
-      const trends = [
-        ['Daily', trendLabel(ms.daily)],
-        ['4-Hour', trendLabel(ms.h4)],
-        ['1-Hour', trendLabel(ms.h1)],
-      ];
-      for (let i = 0; i < trends.length; i++) {
-        const cx = M + i * colW;
-        doc.setTextColor(140, 140, 140);
-        doc.setFontSize(7);
-        doc.text(trends[i][0].toUpperCase(), cx, y);
-        if (trends[i][1] === 'UP') doc.setTextColor(40, 140, 70);
-        else if (trends[i][1] === 'DOWN') doc.setTextColor(180, 40, 40);
-        else doc.setTextColor(110, 110, 110);
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(12);
-        doc.text(trends[i][1], cx, y + 14);
-        doc.setFont('helvetica', 'normal');
-      }
-      y += 36;
-
-      // Section: Rules
-      doc.setDrawColor(220);
-      doc.line(M, y, W - M, y); y += 16;
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(11);
-      doc.setTextColor(20, 20, 20);
-      doc.text('RULES', M, y); y += 14;
-
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
-      state.rules.forEach(rule => {
-        const result = evalRule(rule, ms);
-        let mark = '○';
-        if (result.status === 'pass') mark = '✓';
-        else if (result.status === 'fail') mark = '✕';
-        else if (result.status === 'warn') mark = '!';
-        else if (result.manual) mark = state.manualChecks[rule.id] ? '✓' : '○';
-
-        if (result.status === 'pass') doc.setTextColor(40, 140, 70);
-        else if (result.status === 'fail') doc.setTextColor(180, 40, 40);
-        else if (result.status === 'warn') doc.setTextColor(190, 140, 40);
-        else doc.setTextColor(110, 110, 110);
-        doc.text(mark, M, y);
-
-        doc.setTextColor(20, 20, 20);
-        doc.text(rule.text, M + 16, y);
-
-        doc.setTextColor(140, 140, 140);
-        doc.setFontSize(8);
-        doc.text(result.label, M + 16, y + 11);
-        doc.setFontSize(9);
-        y += 24;
-
-        if (y > H - 120) { doc.addPage(); y = M; }
-      });
-      y += 6;
-
-      // Section: Notes
-      if (y > H - 120) { doc.addPage(); y = M; }
-      doc.setDrawColor(220);
-      doc.line(M, y, W - M, y); y += 16;
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(11);
-      doc.setTextColor(20, 20, 20);
-      doc.text('NOTES', M, y); y += 14;
-
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(10);
-      doc.setTextColor(40, 40, 40);
-      const noteText = ms.notes || '(no notes)';
-      const lines = doc.splitTextToSize(noteText, W - M*2);
-      for (const line of lines) {
-        if (y > H - 60) { doc.addPage(); y = M; }
-        doc.text(line, M, y);
-        y += 13;
-      }
-      y += 10;
-
-      // Section: Screenshots
-      if (ms.shots.length > 0) {
-        if (y > H - 200) { doc.addPage(); y = M; }
-        doc.setDrawColor(220);
-        doc.line(M, y, W - M, y); y += 16;
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(11);
-        doc.setTextColor(20, 20, 20);
-        doc.text('SCREENSHOTS', M, y); y += 14;
-
-        for (const shot of ms.shots) {
-          // Get image dimensions from data URL via Image()
-          const dims = await new Promise(res => {
-            const im = new Image();
-            im.onload = () => res({ w: im.width, h: im.height });
-            im.src = shot;
-          });
-          const maxW = W - M*2;
-          let drawW = maxW;
-          let drawH = (dims.h / dims.w) * drawW;
-          if (drawH > H - M*2) {
-            drawH = H - M*2;
-            drawW = (dims.w / dims.h) * drawH;
-          }
-          if (y + drawH > H - M) { doc.addPage(); y = M; }
-          try {
-            doc.addImage(shot, 'JPEG', M, y, drawW, drawH);
-          } catch (e) {
-            doc.addImage(shot, 'PNG', M, y, drawW, drawH);
-          }
-          y += drawH + 14;
-        }
-      }
-
-      const today = new Date();
-      const fname = `${mkt.symbol}_${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}.pdf`;
-      doc.save(fname);
-    } catch (e) {
-      console.error(e);
-      alert('pdf export failed: ' + e.message);
-    } finally {
-      btn.disabled = false;
-      btn.textContent = 'export pdf';
-    }
+document.getElementById('modal-save').onclick = () => {
+  if (currentType === 'standard') {
+    const name = document.getElementById('f-name').value.trim();
+    const amount = parseFloat(document.getElementById('f-amount').value);
+    const due = document.getElementById('f-due').value || null;
+    if (!name || !amount) return alert('Please enter a name and amount.');
+    state.bills.push({ id: uid(), type: 'standard', name, amount, dueDate: due, paid: false });
+  } else {
+    const name = document.getElementById('fw-name').value.trim();
+    const budget = parseFloat(document.getElementById('fw-budget').value);
+    const start = document.getElementById('fw-start').value;
+    if (!name || !budget || !start) return alert('Please fill in all fields.');
+    state.weekly.push({ id: uid(), name, weeklyBudget: budget, startFriday: start, weekData: {} });
   }
+  saveState();
+  closeModal();
+  render();
+};
 
-  // ─── EVENTS ─────────────────────────────────────────────────
-  const marketSelect = document.getElementById('market-select');
-  MARKETS.forEach(mkt => {
-    const opt = document.createElement('option');
-    opt.value = mkt.symbol;
-    opt.textContent = `${mkt.symbol} — ${mkt.label}`;
-    marketSelect.appendChild(opt);
-  });
-  marketSelect.addEventListener('change', e => {
-    state.selected = e.target.value || null;
-    saveState();
-    renderMarkets();
-    renderTradePanel();
-  });
+// ── MONTH NAV ─────────────────────────────────────────────────────
+document.getElementById('prev-month').addEventListener('click', () => {
+  state.monthOffset--; saveState(); render();
+});
+document.getElementById('next-month').addEventListener('click', () => {
+  state.monthOffset++; saveState(); render();
+});
 
-  document.querySelectorAll('.tf-opts').forEach(group => {
-    const tf = group.dataset.tf;
-    group.querySelectorAll('.tf-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        if (!state.selected) return;
-        const ms = getMarketState(state.selected);
-        ms[tf] = ms[tf] === btn.dataset.dir ? null : btn.dataset.dir;
-        saveState();
-        renderTradePanel();
-        flashSaved();
-      });
-    });
-  });
+// ── MONEY HAVE ────────────────────────────────────────────────────
+const haveInput = document.getElementById('money-have');
+haveInput.value = state.moneyHave || '';
+haveInput.addEventListener('input', () => {
+  state.moneyHave = parseFloat(haveInput.value) || 0;
+  saveState(); calcTotals();
+});
 
-  let notesTimer;
-  document.getElementById('notes').addEventListener('input', e => {
-    if (!state.selected) return;
-    const ms = getMarketState(state.selected);
-    ms.notes = e.target.value;
-    clearTimeout(notesTimer);
-    const c = document.getElementById('save-confirm');
-    c.textContent = 'saving…';
-    c.classList.remove('saved');
-    notesTimer = setTimeout(() => { saveState(); flashSaved(); }, 400);
-  });
+// ── UTIL ──────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
 
-  function flashSaved() {
-    const c = document.getElementById('save-confirm');
-    c.textContent = 'saved ✓';
-    c.classList.add('saved');
-  }
-
-  document.getElementById('btn-clear').addEventListener('click', () => {
-    if (!state.selected) return;
-    if (!confirm('clear all settings for ' + state.selected + '? this includes notes and screenshots.')) return;
-    state.markets[state.selected] = { daily: null, h4: null, h1: null, notes: '', shots: [] };
-    saveState();
-    renderTradePanel();
-  });
-
-  document.getElementById('tp-export').addEventListener('click', exportPdf);
-
-  const dateInput = document.getElementById('date-input');
-  function formatDateInput(date) {
-    const y = date.getFullYear();
-    const m = String(date.getMonth()+1).padStart(2,'0');
-    const d = String(date.getDate()).padStart(2,'0');
-    return `${y}-${m}-${d}`;
-  }
-  function initDateInput() { dateInput.value = formatDateInput(getActiveDate()); }
-  dateInput.addEventListener('change', e => {
-    state.dateOverride = e.target.value || null;
-    saveState();
-    renderAll();
-  });
-  document.getElementById('reset-date').addEventListener('click', () => {
-    state.dateOverride = null;
-    saveState();
-    initDateInput();
-    renderAll();
-  });
-
-  // ─── UTIL ───────────────────────────────────────────────────
-  function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  }
-
-  // ─── INIT ───────────────────────────────────────────────────
-  function renderAll() { renderReading(); renderMarkets(); renderRules(); renderTradePanel(); }
-  setupRuleForm();
-  setupDragDrop();
-  initDateInput();
-  renderAll();
-
-  // Refresh time-based rules every 30s
-  setInterval(renderRules, 30000);
+// ── INIT ──────────────────────────────────────────────────────────
+render();
 </script>
 </body>
 </html>
