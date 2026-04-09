@@ -567,14 +567,19 @@
         <div class="stat-sub">all bills this month</div>
       </div>
       <div class="stat">
-        <div class="stat-label">After Bills</div>
-        <div class="stat-value" id="after-bills">$0.00</div>
-        <div class="stat-sub">remaining balance</div>
+        <div class="stat-label">Still Owe</div>
+        <div class="stat-value" id="still-owe">$0.00</div>
+        <div class="stat-sub">unpaid bills remaining</div>
       </div>
       <div class="stat">
         <div class="stat-label">Need to Earn</div>
         <div class="stat-value" id="need-earn">$0.00</div>
         <div class="stat-sub">to cover all expenses</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Left Over</div>
+        <div class="stat-value" id="left-over">$0.00</div>
+        <div class="stat-sub">after all bills paid</div>
       </div>
       <div class="stat">
         <div class="stat-label">Per Day Needed</div>
@@ -731,43 +736,62 @@ function generateWeeks(startFriday, month, year) {
 // ── OVERVIEW CALC ──────────────────────────────────────────────────
 function calcTotals() {
   const { month, year } = getMonthYear();
-  let total = 0;
+  const have = parseFloat(state.moneyHave) || 0;
 
-  // all standard bills (no month filter)
-  state.bills.forEach(b => {
-    total += parseFloat(b.amount) || 0;
-  });
-
-  // weekly budgets: sum actual spent across all weeks in this month
+  // totalOwed: full month cost, never changes with paid status
+  let totalOwed = 0;
+  state.bills.forEach(b => { totalOwed += parseFloat(b.amount) || 0; });
   state.weekly.forEach(w => {
-    const weeks = generateWeeks(w.startFriday, month, year);
-    weeks.forEach(wk => {
-      const cap = parseFloat(w.weeklyBudget) || 0;
-      total += cap;
+    generateWeeks(w.startFriday, month, year).forEach(wk => {
+      totalOwed += parseFloat(w.weeklyBudget) || 0;
     });
   });
 
-  const have = parseFloat(state.moneyHave) || 0;
-  const after = have - total;
-  const needEarn = after < 0 ? Math.abs(after) : 0;
+  // stillOwe: only unpaid/unchecked amounts remaining
+  let stillOwe = 0;
+  state.bills.forEach(b => {
+    if (!b.paid) stillOwe += parseFloat(b.amount) || 0;
+  });
+  state.weekly.forEach(w => {
+    generateWeeks(w.startFriday, month, year).forEach(wk => {
+      if (!w.weekData) w.weekData = {};
+      const wd = w.weekData[wk.startStr] || { logs: [], checked: false };
+      const spent = wd.logs.reduce((s, l) => s + (parseFloat(l.amount)||0), 0);
+      const cap = parseFloat(w.weeklyBudget) || 0;
+      const isChecked = wd.checked || spent >= cap;
+      if (!isChecked) stillOwe += cap;
+    });
+  });
 
-  document.getElementById('total-owed').textContent = fmt$(total);
-  const afterEl = document.getElementById('after-bills');
-  afterEl.textContent = (after < 0 ? '-' : '') + fmt$(after);
-  afterEl.className = 'stat-value ' + (after < 0 ? 'negative' : after < total * 0.1 ? 'warn' : 'positive');
+  // needEarn: gap between total owed and what you have (0 if covered)
+  const needEarn = Math.max(totalOwed - have, 0);
+
+  // leftOver: surplus only once fully covered, otherwise 0
+  const leftOver = have > totalOwed ? have - totalOwed : 0;
+
+  // per-day: stillOwe / days left in month including today
+  const now = new Date();
+  const isCurrentMonth = (now.getMonth() === month && now.getFullYear() === year);
+  const daysLeft = isCurrentMonth
+    ? new Date(year, month + 1, 0).getDate() - now.getDate() + 1
+    : new Date(year, month + 1, 0).getDate();
+  const perDay = (daysLeft > 0 && stillOwe > 0) ? stillOwe / daysLeft : 0;
+
+  // update DOM
+  document.getElementById('total-owed').textContent = fmt$(totalOwed);
+
+  const stillEl = document.getElementById('still-owe');
+  stillEl.textContent = fmt$(stillOwe);
+  stillEl.className = 'stat-value ' + (stillOwe > 0 ? 'negative' : 'positive');
 
   const needEl = document.getElementById('need-earn');
   needEl.textContent = fmt$(needEarn);
   needEl.className = 'stat-value ' + (needEarn > 0 ? 'negative' : 'positive');
 
-  // per-day calculation: remaining owed / days left in month (including today)
-  const now = new Date();
-  const isCurrentMonth = (now.getMonth() === month && now.getFullYear() === year);
-  const daysLeft = isCurrentMonth
-    ? new Date(year, month + 1, 0).getDate() - now.getDate() + 1
-    : new Date(year, month + 1, 0).getDate(); // future month = full month
-  const stillNeeded = Math.max(total - have, 0);
-  const perDay = daysLeft > 0 ? stillNeeded / daysLeft : 0;
+  const leftEl = document.getElementById('left-over');
+  leftEl.textContent = fmt$(leftOver);
+  leftEl.className = 'stat-value ' + (leftOver > 0 ? 'positive' : '');
+
   const perDayEl = document.getElementById('per-day');
   const perDaySubEl = document.getElementById('per-day-sub');
   perDayEl.textContent = fmt$(perDay);
@@ -877,7 +901,7 @@ function renderWeeklyRow(w, wk, today, isFirst) {
   // find existing week data
   const weekKey = `${w.id}_${wk.startStr}`;
   if (!w.weekData) w.weekData = {};
-  if (!w.weekData[wk.startStr]) w.weekData[wk.startStr] = { logs: [] };
+  if (!w.weekData[wk.startStr]) w.weekData[wk.startStr] = { logs: [], checked: false };
   const wd = w.weekData[wk.startStr];
 
   const spent = wd.logs.reduce((s, l) => s + (parseFloat(l.amount)||0), 0);
@@ -885,9 +909,13 @@ function renderWeeklyRow(w, wk, today, isFirst) {
   const remaining = cap - spent;
   const pct = cap > 0 ? Math.min(spent / cap, 1) * 100 : 0;
 
+  // auto-check if spent >= cap, otherwise respect manual check
+  const isChecked = spent >= cap || !!wd.checked;
+  const autoChecked = spent >= cap;
+
   let barClass = pct >= 100 ? 'over' : pct >= 75 ? 'warn' : '';
   let remClass = remaining < 0 ? 'over' : remaining < cap * 0.25 ? 'warn' : 'ok';
-  let rowClass = remaining < 0 ? 'week-over' : isPast ? 'week-past' : '';
+  let rowClass = isChecked ? 'week-done' : remaining < 0 ? 'week-over' : isPast ? 'week-past' : '';
 
   const logsHtml = wd.logs.map(l => `
     <div class="week-log-entry">
@@ -899,11 +927,18 @@ function renderWeeklyRow(w, wk, today, isFirst) {
     </div>`).join('');
 
   return `
-  <div class="week-row ${rowClass}" data-wkey="${weekKey}">
+  <div class="week-row ${rowClass}" data-wkey="${weekKey}" style="${isChecked ? 'opacity:0.45' : ''}">
     <div class="week-header">
-      <div>
-        <div class="week-name">${esc(w.name)}</div>
-        <div class="week-range">${formatRange(wk.startStr, wk.endStr)}</div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div class="bill-check ${isChecked ? 'checked' : ''}"
+          onclick="${autoChecked ? '' : `toggleWeekCheck('${w.id}','${wk.startStr}')`}"
+          style="${autoChecked ? 'cursor:default;opacity:0.7' : ''}"
+          title="${autoChecked ? 'auto-checked: cap reached' : 'mark week as done'}">
+        </div>
+        <div>
+          <div class="week-name" style="${isChecked ? 'text-decoration:line-through;color:var(--muted)' : ''}">${esc(w.name)}</div>
+          <div class="week-range">${formatRange(wk.startStr, wk.endStr)}</div>
+        </div>
       </div>
       <div class="week-totals">
         <div class="week-spent">${fmt$(spent)} <span style="color:var(--muted);font-size:0.75rem;">/ ${fmt$(cap)}</span></div>
@@ -942,6 +977,20 @@ function deleteWeekly(id) {
   if (!w) return;
   if (!confirm('Remove "' + w.name + '" and all its weekly data?')) return;
   state.weekly = state.weekly.filter(x => x.id !== id);
+  saveState(); render();
+}
+
+function toggleWeekCheck(wid, startStr) {
+  const w = state.weekly.find(x => x.id === wid);
+  if (!w) return;
+  if (!w.weekData) w.weekData = {};
+  if (!w.weekData[startStr]) w.weekData[startStr] = { logs: [] };
+  const wd = w.weekData[startStr];
+  const spent = wd.logs.reduce((s, l) => s + (parseFloat(l.amount)||0), 0);
+  const cap = parseFloat(w.weeklyBudget) || 0;
+  // if auto-checked (spent >= cap), ignore manual toggle
+  if (spent >= cap) return;
+  wd.checked = !wd.checked;
   saveState(); render();
 }
 
