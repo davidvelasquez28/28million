@@ -66,7 +66,7 @@
     margin-right: auto;
   }
   .month-ctrl { display: flex; align-items: center; gap: 8px; }
-  .month-ctrl button {
+  .month-ctrl button, .reset-btn {
     background: transparent;
     border: 1px solid var(--border);
     color: var(--muted);
@@ -78,6 +78,7 @@
     transition: color 0.15s, border-color 0.15s;
   }
   .month-ctrl button:hover { color: var(--accent); border-color: var(--accent); }
+  .reset-btn:hover { color: var(--red); border-color: var(--red); }
   .month-label {
     font-size: 0.75rem;
     color: var(--text);
@@ -139,7 +140,7 @@
   /* ── STAT CARDS ── */
   .stat-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 12px;
   }
   .stat {
@@ -174,14 +175,12 @@
   }
   .stat-value.positive { color: var(--accent2); }
   .stat-value.negative { color: var(--red); }
-  .stat-value.warn { color: var(--warn); }
   .stat.highlight {
     border-color: rgba(212,242,100,0.3);
     background: linear-gradient(135deg, var(--surface) 0%, #1a1e15 100%);
   }
   .stat.highlight .stat-label { color: var(--accent); }
 
-  /* editable "have" input */
   .stat-input-wrap { margin-top: 10px; }
   .stat-input {
     background: transparent;
@@ -225,7 +224,6 @@
   .bill-row.overdue { border-color: rgba(255,92,92,0.35); }
   .bill-row.due-soon { border-color: rgba(242,199,106,0.35); }
 
-  /* checkbox */
   .bill-check {
     width: 20px; height: 20px;
     border: 1px solid var(--border);
@@ -407,7 +405,7 @@
   .week-log-label::placeholder { color: var(--muted); }
   .week-log-label:focus { border-color: var(--accent); }
 
-  /* ── ADD BILL MODAL ── */
+  /* ── MODAL ── */
   .modal-overlay {
     display: none;
     position: fixed;
@@ -481,6 +479,7 @@
     text-transform: uppercase;
   }
   .type-btn.active { color: var(--accent); border-color: var(--accent); background: rgba(212,242,100,0.06); }
+  .type-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
   .form-fields-standard, .form-fields-weekly { display: none; }
   .form-fields-standard.active, .form-fields-weekly.active { display: block; }
@@ -527,7 +526,6 @@
     border-radius: 10px;
   }
 
-  /* log spend inline form toggle */
   .log-form-wrap { display: none; }
   .log-form-wrap.open { display: flex; }
 </style>
@@ -537,6 +535,7 @@
 <div class="topbar">
   <h1>Budget</h1>
   <span class="topbar-sub">monthly overview</span>
+  <button class="reset-btn" id="reset-btn" title="wipe everything">reset all</button>
   <div class="month-ctrl">
     <button id="prev-month">← prev</button>
     <span class="month-label" id="month-label"></span>
@@ -562,24 +561,14 @@
         <div class="stat-sub">tap to edit · auto-adjusts</div>
       </div>
       <div class="stat">
-        <div class="stat-label">Bills This Month</div>
-        <div class="stat-value" id="total-owed">$0.00</div>
-        <div class="stat-sub">full month cost</div>
-      </div>
-      <div class="stat">
-        <div class="stat-label">Need to Earn</div>
-        <div class="stat-value" id="need-earn">$0.00</div>
-        <div class="stat-sub">to cover all expenses</div>
-      </div>
-      <div class="stat">
         <div class="stat-label">Unpaid Bills Remaining</div>
         <div class="stat-value" id="still-owe">$0.00</div>
         <div class="stat-sub">not yet paid or logged</div>
       </div>
       <div class="stat">
-        <div class="stat-label">Left Over</div>
-        <div class="stat-value" id="left-over">$0.00</div>
-        <div class="stat-sub">after all bills paid</div>
+        <div class="stat-label">After Bills</div>
+        <div class="stat-value" id="after-bills">$0.00</div>
+        <div class="stat-sub">money minus what's still owed</div>
       </div>
     </div>
   </div>
@@ -599,10 +588,10 @@
 
 </div>
 
-<!-- ── ADD BILL MODAL ── -->
+<!-- ── ADD/EDIT BILL MODAL ── -->
 <div class="modal-overlay" id="modal-overlay">
   <div class="modal">
-    <h3>Add a Bill</h3>
+    <h3 id="modal-title">Add a Bill</h3>
     <div class="type-toggle">
       <button class="type-btn active" id="type-standard" onclick="setType('standard')">Standard</button>
       <button class="type-btn" id="type-weekly" onclick="setType('weekly')">Weekly Budget</button>
@@ -618,7 +607,7 @@
         <input type="number" id="f-amount" placeholder="0.00" step="0.01" min="0">
       </div>
       <div class="form-group">
-        <label>Due Date <span style="color:var(--muted);font-size:0.55rem;">(optional)</span></label>
+        <label>Due Date <span style="color:var(--muted);font-size:0.55rem;">(this month, optional)</span></label>
         <input type="date" id="f-due">
       </div>
     </div>
@@ -647,41 +636,76 @@
 
 <script>
 // ── STATE ──────────────────────────────────────────────────────────
+// v3 schema:
+//   moneyByMonth: { "2026-04": 1500, ... }   per-month balance
+//   bills: [{ id, name, amount, dueDates: { "2026-04": "2026-04-23", ... },
+//             paid: { "2026-04": true, ... } }]
+//   weekly: [{ id, name, weeklyBudget, startFriday, weekData: { "2026-04-04": { logs:[], checked } } }]
 let state = {
-  moneyHave: 0,
-  bills: [],      // { id, type:'standard', name, amount, dueDate, paid }
-  weekly: [],     // { id, name, weeklyBudget, startFriday, weekData:{} }
-  monthOffset: 0  // 0 = current month
+  moneyByMonth: {},
+  bills: [],
+  weekly: [],
+  monthOffset: 0
 };
 
 function loadState() {
   try {
-    const s = localStorage.getItem('budget_v2');
-    if (s) state = JSON.parse(s);
+    const v3 = localStorage.getItem('budget_v3');
+    if (v3) { state = JSON.parse(v3); return; }
+    // migrate v2 → v3 if present
+    const v2 = localStorage.getItem('budget_v2');
+    if (v2) {
+      const old = JSON.parse(v2);
+      const monthKey = monthKeyFromOffset(0);
+      state.moneyByMonth = { [monthKey]: old.moneyHave || 0 };
+      state.bills = (old.bills || []).map(b => ({
+        id: b.id,
+        name: b.name,
+        amount: b.amount,
+        dueDates: b.dueDate ? { [monthKey]: b.dueDate } : {},
+        paid: b.paid ? { [monthKey]: true } : {}
+      }));
+      state.weekly = old.weekly || [];
+      saveState();
+    }
   } catch(e) {}
 }
 function saveState() {
-  localStorage.setItem('budget_v2', JSON.stringify(state));
+  localStorage.setItem('budget_v3', JSON.stringify(state));
 }
-loadState();
 
 // ── HELPERS ────────────────────────────────────────────────────────
 function uid() { return Math.random().toString(36).slice(2,9); }
-
-// adjust money I have by a delta (negative for spending, positive for refund)
-function adjustMoney(delta) {
-  state.moneyHave = (parseFloat(state.moneyHave) || 0) + delta;
-  // round to 2 decimals to avoid float drift
-  state.moneyHave = Math.round(state.moneyHave * 100) / 100;
-  const el = document.getElementById('money-have');
-  if (el) el.value = state.moneyHave || '';
-}
 
 function getMonthYear() {
   const d = new Date();
   d.setDate(1);
   d.setMonth(d.getMonth() + state.monthOffset);
   return { month: d.getMonth(), year: d.getFullYear() };
+}
+function monthKey() {
+  const { month, year } = getMonthYear();
+  return `${year}-${String(month+1).padStart(2,'0')}`;
+}
+function monthKeyFromOffset(offset) {
+  const d = new Date();
+  d.setDate(1);
+  d.setMonth(d.getMonth() + offset);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+
+function getMoneyHave() {
+  return parseFloat(state.moneyByMonth[monthKey()]) || 0;
+}
+function setMoneyHave(v) {
+  state.moneyByMonth[monthKey()] = Math.round((parseFloat(v)||0) * 100) / 100;
+}
+function adjustMoney(delta) {
+  const k = monthKey();
+  const cur = parseFloat(state.moneyByMonth[k]) || 0;
+  state.moneyByMonth[k] = Math.round((cur + delta) * 100) / 100;
+  const el = document.getElementById('money-have');
+  if (el) el.value = state.moneyByMonth[k] || '';
 }
 
 function fmt$(n) {
@@ -693,22 +717,20 @@ function parseDate(s) {
   const [y,m,d] = s.split('-').map(Number);
   return new Date(y, m-1, d);
 }
+function pad(n) { return String(n).padStart(2,'0'); }
+function toDateStr(d) { return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
 
 function formatRange(start, end) {
   const s = parseDate(start);
   const e = parseDate(end);
   const mo = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const sf = `${mo[s.getMonth()]} ${s.getDate()}`;
-  const ef = `${mo[e.getMonth()]} ${e.getDate()}`;
-  return `${sf} – ${ef}`;
+  return `${mo[s.getMonth()]} ${s.getDate()} – ${mo[e.getMonth()]} ${e.getDate()}`;
 }
-
 function formatDue(dateStr) {
   const d = parseDate(dateStr);
   const mo = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   return `${mo[d.getMonth()]} ${d.getDate()}`;
 }
-
 function daysBetween(dateStr) {
   const today = new Date(); today.setHours(0,0,0,0);
   const d = parseDate(dateStr);
@@ -717,8 +739,6 @@ function daysBetween(dateStr) {
 
 function generateWeeks(startFriday, month, year) {
   const weeks = [];
-  const pad = n => String(n).padStart(2,'0');
-  const toStr = d => d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
   const monthStart = new Date(year, month, 1);
   const monthEnd   = new Date(year, month + 1, 0);
   let cur = parseDate(startFriday);
@@ -726,7 +746,7 @@ function generateWeeks(startFriday, month, year) {
     const end = new Date(cur.getTime());
     end.setDate(end.getDate() + 6);
     if (end >= monthStart) {
-      weeks.push({ startStr: toStr(cur), endStr: toStr(end) });
+      weeks.push({ startStr: toDateStr(cur), endStr: toDateStr(end) });
     }
     const next = new Date(cur.getTime());
     next.setDate(next.getDate() + 7);
@@ -735,24 +755,33 @@ function generateWeeks(startFriday, month, year) {
   return weeks;
 }
 
+// ── PER-BILL ACCESS HELPERS ────────────────────────────────────────
+function getBillDue(b) {
+  // Returns the due date for the current month. If none set, returns null.
+  return b.dueDates?.[monthKey()] || null;
+}
+function setBillDue(b, dateStr) {
+  if (!b.dueDates) b.dueDates = {};
+  if (dateStr) b.dueDates[monthKey()] = dateStr;
+  else delete b.dueDates[monthKey()];
+}
+function isBillPaid(b) {
+  return !!b.paid?.[monthKey()];
+}
+function setBillPaid(b, paid) {
+  if (!b.paid) b.paid = {};
+  if (paid) b.paid[monthKey()] = true;
+  else delete b.paid[monthKey()];
+}
+
 // ── OVERVIEW CALC ──────────────────────────────────────────────────
 function calcTotals() {
   const { month, year } = getMonthYear();
-  const have = parseFloat(state.moneyHave) || 0;
+  const have = getMoneyHave();
 
-  // Bills This Month: full month cost, static regardless of paid status
-  let totalOwed = 0;
-  state.bills.forEach(b => { totalOwed += parseFloat(b.amount) || 0; });
-  state.weekly.forEach(w => {
-    generateWeeks(w.startFriday, month, year).forEach(wk => {
-      totalOwed += parseFloat(w.weeklyBudget) || 0;
-    });
-  });
-
-  // Unpaid Bills Remaining: only unpaid bills + un-capped weekly budgets minus what's been logged
   let stillOwe = 0;
   state.bills.forEach(b => {
-    if (!b.paid) stillOwe += parseFloat(b.amount) || 0;
+    if (!isBillPaid(b)) stillOwe += parseFloat(b.amount) || 0;
   });
   state.weekly.forEach(w => {
     generateWeeks(w.startFriday, month, year).forEach(wk => {
@@ -760,32 +789,20 @@ function calcTotals() {
       const wd = w.weekData[wk.startStr] || { logs: [], checked: false };
       const spent = wd.logs.reduce((s, l) => s + (parseFloat(l.amount)||0), 0);
       const cap = parseFloat(w.weeklyBudget) || 0;
-      // remaining room in the week's budget (floored at 0)
       const remaining = Math.max(cap - spent, 0);
       if (!wd.checked) stillOwe += remaining;
     });
   });
 
-  // Need to Earn: gap between bills this month and money you have
-  const needEarn = Math.max(totalOwed - have, 0);
-
-  // Left Over: surplus only once covered
-  const leftOver = have > totalOwed ? have - totalOwed : 0;
-
-  // update DOM
-  document.getElementById('total-owed').textContent = fmt$(totalOwed);
-
-  const needEl = document.getElementById('need-earn');
-  needEl.textContent = fmt$(needEarn);
-  needEl.className = 'stat-value ' + (needEarn > 0 ? 'negative' : 'positive');
+  const afterBills = have - stillOwe;
 
   const stillEl = document.getElementById('still-owe');
   stillEl.textContent = fmt$(stillOwe);
   stillEl.className = 'stat-value ' + (stillOwe > 0 ? 'negative' : 'positive');
 
-  const leftEl = document.getElementById('left-over');
-  leftEl.textContent = fmt$(leftOver);
-  leftEl.className = 'stat-value ' + (leftOver > 0 ? 'positive' : '');
+  const afterEl = document.getElementById('after-bills');
+  afterEl.textContent = fmt$(afterBills);
+  afterEl.className = 'stat-value ' + (afterBills < 0 ? 'negative' : 'positive');
 }
 
 // ── RENDER ────────────────────────────────────────────────────────
@@ -794,13 +811,17 @@ function render() {
   const mo = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   document.getElementById('month-label').textContent = `${mo[month]} ${year}`;
 
+  const haveInput = document.getElementById('money-have');
+  haveInput.value = getMoneyHave() || '';
+
   const today = new Date(); today.setHours(0,0,0,0);
   const list = document.getElementById('bills-list');
 
   let rows = [];
 
   state.bills.forEach(b => {
-    const sortDate = b.dueDate ? parseDate(b.dueDate) : new Date(year, month, 32);
+    const due = getBillDue(b);
+    const sortDate = due ? parseDate(due) : new Date(year, month, 32);
     rows.push({ sortDate, type: 'standard', data: b });
   });
 
@@ -821,7 +842,7 @@ function render() {
 
   let html = '';
   if (rows.length === 0) {
-    html = '<div class="empty-state" id="empty-state">no bills added yet — hit + add bill to get started</div>';
+    html = '<div class="empty-state">no bills added yet — hit + add bill to get started</div>';
   }
 
   const seenWeeklyIds = new Set();
@@ -840,17 +861,19 @@ function render() {
 }
 
 function renderStandardBill(b, today) {
+  const paid = isBillPaid(b);
+  const due = getBillDue(b);
   let statusClass = '';
   let statusTag = '';
   let dueLine = '';
 
-  if (b.paid) {
+  if (paid) {
     statusClass = 'paid';
     statusTag = '<span class="tag-paid">paid</span>';
-    dueLine = b.dueDate ? `due ${formatDue(b.dueDate)} &nbsp; ${statusTag}` : statusTag;
-  } else if (b.dueDate) {
-    const days = daysBetween(b.dueDate);
-    dueLine = `due ${formatDue(b.dueDate)}`;
+    dueLine = due ? `due ${formatDue(due)} &nbsp; ${statusTag}` : statusTag;
+  } else if (due) {
+    const days = daysBetween(due);
+    dueLine = `due ${formatDue(due)}`;
     if (days < 0) {
       statusClass = 'overdue';
       statusTag = `<span class="tag-overdue">overdue by ${Math.abs(days)}d</span>`;
@@ -865,13 +888,14 @@ function renderStandardBill(b, today) {
 
   return `
   <div class="bill-row ${statusClass}" data-id="${b.id}">
-    <div class="bill-check ${b.paid ? 'checked' : ''}" onclick="togglePaid('${b.id}')"></div>
+    <div class="bill-check ${paid ? 'checked' : ''}" onclick="togglePaid('${b.id}')"></div>
     <div class="bill-info">
       <div class="bill-name">${esc(b.name)}</div>
       <div class="bill-meta">${dueLine}</div>
     </div>
     <div class="bill-amount">${fmt$(b.amount)}</div>
     <div class="bill-actions">
+      <button class="bill-btn" onclick="editBill('${b.id}')">edit</button>
       <button class="bill-btn danger" onclick="deleteBill('${b.id}')">remove</button>
     </div>
   </div>`;
@@ -881,7 +905,6 @@ function renderWeeklyRow(w, wk, today, isFirst) {
   const end = parseDate(wk.endStr);
   const isPast = end < today;
 
-  const weekKey = `${w.id}_${wk.startStr}`;
   if (!w.weekData) w.weekData = {};
   if (!w.weekData[wk.startStr]) w.weekData[wk.startStr] = { logs: [], checked: false };
   const wd = w.weekData[wk.startStr];
@@ -890,7 +913,6 @@ function renderWeeklyRow(w, wk, today, isFirst) {
   const cap = parseFloat(w.weeklyBudget) || 0;
   const remaining = cap - spent;
   const pct = cap > 0 ? Math.min(spent / cap, 1) * 100 : 0;
-
   const isChecked = !!wd.checked;
 
   let barClass = pct >= 100 ? 'over' : pct >= 75 ? 'warn' : '';
@@ -907,7 +929,7 @@ function renderWeeklyRow(w, wk, today, isFirst) {
     </div>`).join('');
 
   return `
-  <div class="week-row ${rowClass}" data-wkey="${weekKey}" style="${isChecked ? 'opacity:0.45' : ''}">
+  <div class="week-row ${rowClass}" style="${isChecked ? 'opacity:0.45' : ''}">
     <div class="week-header">
       <div style="display:flex;align-items:center;gap:12px;">
         <div class="bill-check ${isChecked ? 'checked' : ''}"
@@ -925,6 +947,7 @@ function renderWeeklyRow(w, wk, today, isFirst) {
       </div>
       <div class="bill-actions">
         <button class="bill-btn" onclick="toggleLogForm('${w.id}','${wk.startStr}')">+ log</button>
+        ${isFirst ? `<button class="bill-btn" onclick="editWeekly('${w.id}')">edit</button>` : ''}
         ${isFirst ? `<button class="bill-btn danger" onclick="deleteWeekly('${w.id}')">remove</button>` : ''}
       </div>
     </div>
@@ -940,18 +963,17 @@ function renderWeeklyRow(w, wk, today, isFirst) {
   </div>`;
 }
 
-// ── ACTIONS (with auto money adjustment) ──────────────────────────
+// ── ACTIONS ───────────────────────────────────────────────────────
 function togglePaid(id) {
   const b = state.bills.find(x => x.id === id);
   if (!b) return;
   const amt = parseFloat(b.amount) || 0;
-  if (!b.paid) {
-    // marking paid → money goes down
-    b.paid = true;
+  const wasPaid = isBillPaid(b);
+  if (!wasPaid) {
+    setBillPaid(b, true);
     adjustMoney(-amt);
   } else {
-    // un-marking paid → money goes back up
-    b.paid = false;
+    setBillPaid(b, false);
     adjustMoney(amt);
   }
   saveState(); render();
@@ -960,8 +982,9 @@ function togglePaid(id) {
 function deleteBill(id) {
   const b = state.bills.find(x => x.id === id);
   if (!b) return;
-  // if it was paid, refund the money since we're removing the record
-  if (b.paid) {
+  if (!confirm(`Remove "${b.name}" from all months?`)) return;
+  // refund only the current month if it was paid this month
+  if (isBillPaid(b)) {
     adjustMoney(parseFloat(b.amount) || 0);
   }
   state.bills = state.bills.filter(x => x.id !== id);
@@ -971,14 +994,15 @@ function deleteBill(id) {
 function deleteWeekly(id) {
   const w = state.weekly.find(x => x.id === id);
   if (!w) return;
-  if (!confirm('Remove "' + w.name + '" and all its weekly data?')) return;
-  // refund all logged spending since we're removing the record
+  if (!confirm(`Remove "${w.name}" and all its weekly data?`)) return;
+  // refund logged spending from CURRENT month only
+  const { month, year } = getMonthYear();
+  const weeksThisMonth = generateWeeks(w.startFriday, month, year);
   let refund = 0;
-  if (w.weekData) {
-    Object.values(w.weekData).forEach(wd => {
-      (wd.logs || []).forEach(l => { refund += parseFloat(l.amount) || 0; });
-    });
-  }
+  weeksThisMonth.forEach(wk => {
+    const wd = w.weekData?.[wk.startStr];
+    if (wd) (wd.logs || []).forEach(l => { refund += parseFloat(l.amount) || 0; });
+  });
   if (refund > 0) adjustMoney(refund);
   state.weekly = state.weekly.filter(x => x.id !== id);
   saveState(); render();
@@ -1013,7 +1037,6 @@ function addLog(wid, startStr) {
   if (!w.weekData) w.weekData = {};
   if (!w.weekData[startStr]) w.weekData[startStr] = { logs: [] };
   w.weekData[startStr].logs.push({ id: uid(), label, amount: amt });
-  // money goes down when you log a spend
   adjustMoney(-amt);
   saveState(); render();
 }
@@ -1023,16 +1046,19 @@ function deleteLog(wid, startStr, lid) {
   if (!w || !w.weekData?.[startStr]) return;
   const log = w.weekData[startStr].logs.find(l => l.id === lid);
   if (log) {
-    // refund the money since we're undoing the spend
     adjustMoney(parseFloat(log.amount) || 0);
   }
   w.weekData[startStr].logs = w.weekData[startStr].logs.filter(l => l.id !== lid);
   saveState(); render();
 }
 
-// ── MODAL ─────────────────────────────────────────────────────────
+// ── MODAL (add + edit) ─────────────────────────────────────────────
 let currentType = 'standard';
+let editingId = null;       // null = add mode; otherwise = id of bill being edited
+let editingKind = null;     // 'standard' | 'weekly'
+
 function setType(t) {
+  if (editingId) return; // can't switch type while editing
   currentType = t;
   document.getElementById('type-standard').classList.toggle('active', t === 'standard');
   document.getElementById('type-weekly').classList.toggle('active', t === 'weekly');
@@ -1040,15 +1066,60 @@ function setType(t) {
   document.getElementById('fields-weekly').classList.toggle('active', t === 'weekly');
 }
 
-document.getElementById('add-bill-btn').addEventListener('click', () => {
-  document.getElementById('modal-overlay').classList.add('open');
-  const today = new Date();
-  const pad = n => String(n).padStart(2,'0');
-  const todayStr = `${today.getFullYear()}-${pad(today.getMonth()+1)}-${pad(today.getDate())}`;
+function openAddModal() {
+  editingId = null; editingKind = null;
+  document.getElementById('modal-title').textContent = 'Add a Bill';
+  document.getElementById('modal-save').textContent = 'Add Bill';
+  document.getElementById('type-standard').disabled = false;
+  document.getElementById('type-weekly').disabled = false;
+  setType('standard');
+  // clear inputs, prefill dates
+  ['f-name','f-amount','fw-name','fw-budget'].forEach(id => document.getElementById(id).value = '');
+  const todayStr = toDateStr(new Date());
   document.getElementById('f-due').value = todayStr;
   document.getElementById('fw-start').value = todayStr;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function editBill(id) {
+  const b = state.bills.find(x => x.id === id);
+  if (!b) return;
+  editingId = id; editingKind = 'standard';
+  document.getElementById('modal-title').textContent = 'Edit Bill';
+  document.getElementById('modal-save').textContent = 'Save Changes';
+  document.getElementById('type-standard').disabled = true;
+  document.getElementById('type-weekly').disabled = true;
   setType('standard');
-});
+  // force-set even though setType is gated
+  document.getElementById('type-standard').classList.add('active');
+  document.getElementById('type-weekly').classList.remove('active');
+  document.getElementById('fields-standard').classList.add('active');
+  document.getElementById('fields-weekly').classList.remove('active');
+  document.getElementById('f-name').value = b.name;
+  document.getElementById('f-amount').value = b.amount;
+  document.getElementById('f-due').value = getBillDue(b) || '';
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function editWeekly(id) {
+  const w = state.weekly.find(x => x.id === id);
+  if (!w) return;
+  editingId = id; editingKind = 'weekly';
+  document.getElementById('modal-title').textContent = 'Edit Weekly Budget';
+  document.getElementById('modal-save').textContent = 'Save Changes';
+  document.getElementById('type-standard').disabled = true;
+  document.getElementById('type-weekly').disabled = true;
+  document.getElementById('type-standard').classList.remove('active');
+  document.getElementById('type-weekly').classList.add('active');
+  document.getElementById('fields-standard').classList.remove('active');
+  document.getElementById('fields-weekly').classList.add('active');
+  document.getElementById('fw-name').value = w.name;
+  document.getElementById('fw-budget').value = w.weeklyBudget;
+  document.getElementById('fw-start').value = w.startFriday;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+document.getElementById('add-bill-btn').addEventListener('click', openAddModal);
 
 document.getElementById('modal-cancel').onclick = closeModal;
 document.getElementById('modal-overlay').addEventListener('click', e => {
@@ -1057,19 +1128,56 @@ document.getElementById('modal-overlay').addEventListener('click', e => {
 
 function closeModal() {
   document.getElementById('modal-overlay').classList.remove('open');
-  ['f-name','f-amount','f-due','fw-name','fw-budget'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = '';
-  });
+  editingId = null; editingKind = null;
+  document.getElementById('type-standard').disabled = false;
+  document.getElementById('type-weekly').disabled = false;
 }
 
 document.getElementById('modal-save').onclick = () => {
+  // EDIT MODE
+  if (editingId) {
+    if (editingKind === 'standard') {
+      const b = state.bills.find(x => x.id === editingId);
+      if (!b) return;
+      const name = document.getElementById('f-name').value.trim();
+      const amount = parseFloat(document.getElementById('f-amount').value);
+      const due = document.getElementById('f-due').value || null;
+      if (!name || !amount) return alert('Please enter a name and amount.');
+      // if amount changed and bill is paid this month, adjust money to reflect the difference
+      if (isBillPaid(b)) {
+        const diff = (parseFloat(b.amount) || 0) - amount;
+        // old amount was withdrawn; new amount should be withdrawn instead
+        adjustMoney(diff);
+      }
+      b.name = name;
+      b.amount = amount;
+      setBillDue(b, due);
+    } else {
+      const w = state.weekly.find(x => x.id === editingId);
+      if (!w) return;
+      const name = document.getElementById('fw-name').value.trim();
+      const budget = parseFloat(document.getElementById('fw-budget').value);
+      const start = document.getElementById('fw-start').value;
+      if (!name || !budget || !start) return alert('Please fill in all fields.');
+      w.name = name;
+      w.weeklyBudget = budget;
+      w.startFriday = start;
+    }
+    saveState();
+    closeModal();
+    render();
+    return;
+  }
+
+  // ADD MODE
   if (currentType === 'standard') {
     const name = document.getElementById('f-name').value.trim();
     const amount = parseFloat(document.getElementById('f-amount').value);
     const due = document.getElementById('f-due').value || null;
     if (!name || !amount) return alert('Please enter a name and amount.');
-    state.bills.push({ id: uid(), type: 'standard', name, amount, dueDate: due, paid: false });
+    const newBill = { id: uid(), name, amount, dueDates: {}, paid: {} };
+    if (due) newBill.dueDates[monthKey()] = due;
+    state.bills.push(newBill);
   } else {
     const name = document.getElementById('fw-name').value.trim();
     const budget = parseFloat(document.getElementById('fw-budget').value);
@@ -1090,11 +1198,19 @@ document.getElementById('next-month').addEventListener('click', () => {
   state.monthOffset++; saveState(); render();
 });
 
-// ── MONEY HAVE (direct edit sets the value) ───────────────────────
+// ── RESET ALL ─────────────────────────────────────────────────────
+document.getElementById('reset-btn').addEventListener('click', () => {
+  if (!confirm('This wipes ALL bills, weekly budgets, and balance history. Are you sure?')) return;
+  if (!confirm('Really sure? This cannot be undone.')) return;
+  state = { moneyByMonth: {}, bills: [], weekly: [], monthOffset: 0 };
+  saveState();
+  render();
+});
+
+// ── MONEY HAVE INPUT ──────────────────────────────────────────────
 const haveInput = document.getElementById('money-have');
-haveInput.value = state.moneyHave || '';
 haveInput.addEventListener('input', () => {
-  state.moneyHave = parseFloat(haveInput.value) || 0;
+  setMoneyHave(haveInput.value);
   saveState(); calcTotals();
 });
 
@@ -1104,6 +1220,7 @@ function esc(s) {
 }
 
 // ── INIT ──────────────────────────────────────────────────────────
+loadState();
 render();
 </script>
 </body>
