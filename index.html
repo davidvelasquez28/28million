@@ -564,6 +564,11 @@
         <div class="stat-sub">everything due this month</div>
       </div>
       <div class="stat">
+        <div class="stat-label">Money To Make</div>
+        <div class="stat-value" id="money-to-make">$0.00</div>
+        <div class="stat-sub">bills minus what you have</div>
+      </div>
+      <div class="stat">
         <div class="stat-label">Make Per Day</div>
         <div class="stat-value" id="per-day">$0.00</div>
         <div class="stat-sub" id="per-day-sub">to hit budget by target</div>
@@ -790,6 +795,9 @@ function calcTotals() {
   const daysLeft = Math.round((targetDate - today) / 86400000);
 
   const shortfall = totalBills - have;
+  const moneyToMake = Math.max(shortfall, 0);
+  document.getElementById('money-to-make').textContent = fmt$(moneyToMake);
+
   let perDay = 0;
   if (daysLeft > 0 && shortfall > 0) {
     perDay = shortfall / daysLeft;
