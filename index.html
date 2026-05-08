@@ -173,8 +173,6 @@
     letter-spacing: -1px;
     margin-top: 10px;
   }
-  .stat-value.positive { color: var(--accent2); }
-  .stat-value.negative { color: var(--red); }
   .stat.highlight {
     border-color: rgba(212,242,100,0.3);
     background: linear-gradient(135deg, var(--surface) 0%, #1a1e15 100%);
@@ -561,14 +559,14 @@
         <div class="stat-sub">tap to edit · auto-adjusts</div>
       </div>
       <div class="stat">
-        <div class="stat-label">Unpaid Bills Remaining</div>
-        <div class="stat-value" id="still-owe">$0.00</div>
-        <div class="stat-sub">not yet paid or logged</div>
+        <div class="stat-label">Total Bills</div>
+        <div class="stat-value" id="total-bills">$0.00</div>
+        <div class="stat-sub">everything due this month</div>
       </div>
       <div class="stat">
-        <div class="stat-label">After Bills</div>
-        <div class="stat-value" id="after-bills">$0.00</div>
-        <div class="stat-sub">money minus what's still owed</div>
+        <div class="stat-label">Make Per Day</div>
+        <div class="stat-value" id="per-day">$0.00</div>
+        <div class="stat-sub" id="per-day-sub">to hit budget by target</div>
       </div>
     </div>
   </div>
@@ -636,11 +634,6 @@
 
 <script>
 // ── STATE ──────────────────────────────────────────────────────────
-// v3 schema:
-//   moneyByMonth: { "2026-04": 1500, ... }   per-month balance
-//   bills: [{ id, name, amount, dueDates: { "2026-04": "2026-04-23", ... },
-//             paid: { "2026-04": true, ... } }]
-//   weekly: [{ id, name, weeklyBudget, startFriday, weekData: { "2026-04-04": { logs:[], checked } } }]
 let state = {
   moneyByMonth: {},
   bills: [],
@@ -652,7 +645,6 @@ function loadState() {
   try {
     const v3 = localStorage.getItem('budget_v3');
     if (v3) { state = JSON.parse(v3); return; }
-    // migrate v2 → v3 if present
     const v2 = localStorage.getItem('budget_v2');
     if (v2) {
       const old = JSON.parse(v2);
@@ -757,7 +749,6 @@ function generateWeeks(startFriday, month, year) {
 
 // ── PER-BILL ACCESS HELPERS ────────────────────────────────────────
 function getBillDue(b) {
-  // Returns the due date for the current month. If none set, returns null.
   return b.dueDates?.[monthKey()] || null;
 }
 function setBillDue(b, dateStr) {
@@ -779,30 +770,44 @@ function calcTotals() {
   const { month, year } = getMonthYear();
   const have = getMoneyHave();
 
-  let stillOwe = 0;
+  // total bills = every standard bill + every weekly cap, paid or not
+  let totalBills = 0;
   state.bills.forEach(b => {
-    if (!isBillPaid(b)) stillOwe += parseFloat(b.amount) || 0;
+    totalBills += parseFloat(b.amount) || 0;
   });
   state.weekly.forEach(w => {
-    generateWeeks(w.startFriday, month, year).forEach(wk => {
-      if (!w.weekData) w.weekData = {};
-      const wd = w.weekData[wk.startStr] || { logs: [], checked: false };
-      const spent = wd.logs.reduce((s, l) => s + (parseFloat(l.amount)||0), 0);
-      const cap = parseFloat(w.weeklyBudget) || 0;
-      const remaining = Math.max(cap - spent, 0);
-      if (!wd.checked) stillOwe += remaining;
-    });
+    const weeks = generateWeeks(w.startFriday, month, year);
+    totalBills += weeks.length * (parseFloat(w.weeklyBudget) || 0);
   });
 
-  const afterBills = have - stillOwe;
+  document.getElementById('total-bills').textContent = fmt$(totalBills);
 
-  const stillEl = document.getElementById('still-owe');
-  stillEl.textContent = fmt$(stillOwe);
-  stillEl.className = 'stat-value ' + (stillOwe > 0 ? 'negative' : 'positive');
+  // target date = 7 days before end of month
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  const targetDay = lastDay - 7;
+  const targetDate = new Date(year, month, targetDay);
+  const today = new Date(); today.setHours(0,0,0,0);
+  const daysLeft = Math.round((targetDate - today) / 86400000);
 
-  const afterEl = document.getElementById('after-bills');
-  afterEl.textContent = fmt$(afterBills);
-  afterEl.className = 'stat-value ' + (afterBills < 0 ? 'negative' : 'positive');
+  const shortfall = totalBills - have;
+  let perDay = 0;
+  if (daysLeft > 0 && shortfall > 0) {
+    perDay = shortfall / daysLeft;
+  }
+
+  document.getElementById('per-day').textContent = fmt$(perDay);
+
+  const mo = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const targetLabel = `${mo[targetDate.getMonth()]} ${targetDate.getDate()}`;
+  let subText;
+  if (daysLeft > 0) {
+    subText = `${daysLeft} day${daysLeft === 1 ? '' : 's'} until ${targetLabel}`;
+  } else if (daysLeft === 0) {
+    subText = `target is today (${targetLabel})`;
+  } else {
+    subText = `target ${targetLabel} has passed`;
+  }
+  document.getElementById('per-day-sub').textContent = subText;
 }
 
 // ── RENDER ────────────────────────────────────────────────────────
@@ -983,7 +988,6 @@ function deleteBill(id) {
   const b = state.bills.find(x => x.id === id);
   if (!b) return;
   if (!confirm(`Remove "${b.name}" from all months?`)) return;
-  // refund only the current month if it was paid this month
   if (isBillPaid(b)) {
     adjustMoney(parseFloat(b.amount) || 0);
   }
@@ -995,7 +999,6 @@ function deleteWeekly(id) {
   const w = state.weekly.find(x => x.id === id);
   if (!w) return;
   if (!confirm(`Remove "${w.name}" and all its weekly data?`)) return;
-  // refund logged spending from CURRENT month only
   const { month, year } = getMonthYear();
   const weeksThisMonth = generateWeeks(w.startFriday, month, year);
   let refund = 0;
@@ -1054,11 +1057,11 @@ function deleteLog(wid, startStr, lid) {
 
 // ── MODAL (add + edit) ─────────────────────────────────────────────
 let currentType = 'standard';
-let editingId = null;       // null = add mode; otherwise = id of bill being edited
-let editingKind = null;     // 'standard' | 'weekly'
+let editingId = null;
+let editingKind = null;
 
 function setType(t) {
-  if (editingId) return; // can't switch type while editing
+  if (editingId) return;
   currentType = t;
   document.getElementById('type-standard').classList.toggle('active', t === 'standard');
   document.getElementById('type-weekly').classList.toggle('active', t === 'weekly');
@@ -1073,7 +1076,6 @@ function openAddModal() {
   document.getElementById('type-standard').disabled = false;
   document.getElementById('type-weekly').disabled = false;
   setType('standard');
-  // clear inputs, prefill dates
   ['f-name','f-amount','fw-name','fw-budget'].forEach(id => document.getElementById(id).value = '');
   const todayStr = toDateStr(new Date());
   document.getElementById('f-due').value = todayStr;
@@ -1090,7 +1092,6 @@ function editBill(id) {
   document.getElementById('type-standard').disabled = true;
   document.getElementById('type-weekly').disabled = true;
   setType('standard');
-  // force-set even though setType is gated
   document.getElementById('type-standard').classList.add('active');
   document.getElementById('type-weekly').classList.remove('active');
   document.getElementById('fields-standard').classList.add('active');
@@ -1134,7 +1135,6 @@ function closeModal() {
 }
 
 document.getElementById('modal-save').onclick = () => {
-  // EDIT MODE
   if (editingId) {
     if (editingKind === 'standard') {
       const b = state.bills.find(x => x.id === editingId);
@@ -1143,10 +1143,8 @@ document.getElementById('modal-save').onclick = () => {
       const amount = parseFloat(document.getElementById('f-amount').value);
       const due = document.getElementById('f-due').value || null;
       if (!name || !amount) return alert('Please enter a name and amount.');
-      // if amount changed and bill is paid this month, adjust money to reflect the difference
       if (isBillPaid(b)) {
         const diff = (parseFloat(b.amount) || 0) - amount;
-        // old amount was withdrawn; new amount should be withdrawn instead
         adjustMoney(diff);
       }
       b.name = name;
@@ -1169,7 +1167,6 @@ document.getElementById('modal-save').onclick = () => {
     return;
   }
 
-  // ADD MODE
   if (currentType === 'standard') {
     const name = document.getElementById('f-name').value.trim();
     const amount = parseFloat(document.getElementById('f-amount').value);
